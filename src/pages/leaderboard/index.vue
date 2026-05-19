@@ -1,0 +1,521 @@
+<template>
+  <view class="leaderboard-container">
+    <view class="header">
+      <text class="title">🏆 排行榜</text>
+      <text class="subtitle">本周排行榜</text>
+    </view>
+
+    <view class="podium">
+      <view class="podium-item second">
+        <view class="podium-avatar">🥈</view>
+        <text class="podium-name">{{ leaderboard[1]?.nickname || '---' }}</text>
+        <view class="podium-score">
+          <text class="podium-points">{{ leaderboard[1]?.total_points || 0 }}</text>
+          <text class="podium-label">积分</text>
+        </view>
+        <view class="podium-stand" style="height: 100rpx;">2</view>
+      </view>
+      
+      <view class="podium-item first">
+        <view class="crown">👑</view>
+        <view class="podium-avatar">🥇</view>
+        <text class="podium-name">{{ leaderboard[0]?.nickname || '---' }}</text>
+        <view class="podium-score">
+          <text class="podium-points">{{ leaderboard[0]?.total_points || 0 }}</text>
+          <text class="podium-label">积分</text>
+        </view>
+        <view class="podium-stand" style="height: 160rpx;">1</view>
+      </view>
+      
+      <view class="podium-item third">
+        <view class="podium-avatar">🥉</view>
+        <text class="podium-name">{{ leaderboard[2]?.nickname || '---' }}</text>
+        <view class="podium-score">
+          <text class="podium-points">{{ leaderboard[2]?.total_points || 0 }}</text>
+          <text class="podium-label">积分</text>
+        </view>
+        <view class="podium-stand" style="height: 60rpx;">3</view>
+      </view>
+    </view>
+
+    <view class="list-section">
+      <view class="list-header">
+        <text class="list-title">完整榜单</text>
+        <text class="list-count">共 {{ leaderboard.length }} 人</text>
+      </view>
+
+      <view class="list-content">
+        <view
+          v-for="(item, index) in leaderboard.slice(3)"
+          :key="item.id"
+          class="list-item"
+          :class="{ 'is-current': item.id === currentUserId }"
+        >
+          <view class="item-position">
+            <text class="position-number">{{ index + 4 }}</text>
+          </view>
+          <view class="item-avatar" :style="{ background: getRankColor(item.current_rank) }">
+            {{ getRankIcon(item.current_rank) }}
+          </view>
+          <view class="item-info">
+            <text class="item-name">{{ item.nickname }}</text>
+            <text class="item-rank">{{ getRankName(item.current_rank) }}</text>
+          </view>
+          <view class="item-stats">
+            <text class="item-points">{{ item.total_points }}分</text>
+            <text class="item-minutes">{{ item.total_minutes }}分钟</text>
+          </view>
+        </view>
+
+        <view v-if="loading" class="loading-more">
+          <text class="loading-text">加载中...</text>
+        </view>
+
+        <view v-if="leaderboard.length === 0 && !loading" class="empty-state">
+          <text class="empty-icon">📊</text>
+          <text class="empty-text">暂无数据</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="my-rank">
+      <view class="my-rank-card">
+        <view class="my-rank-header">
+          <text class="my-rank-title">我的排名</text>
+          <view class="my-position" v-if="myRank">
+            <text class="position-num">{{ myRank.position }}</text>
+            <text class="position-label">名</text>
+          </view>
+          <view class="my-position" v-else>
+            <text class="position-num">-</text>
+            <text class="position-label">未上榜</text>
+          </view>
+        </view>
+        <view class="my-stats">
+          <view class="my-stat">
+            <text class="stat-value">{{ dailyPoints }}</text>
+            <text class="stat-label">本周积分</text>
+          </view>
+          <view class="my-stat">
+            <text class="stat-value">{{ totalMinutes }}</text>
+            <text class="stat-label">专注时长</text>
+          </view>
+          <view class="my-stat">
+            <text class="stat-value">{{ sessions.length }}</text>
+            <text class="stat-label">完成任务</text>
+          </view>
+        </view>
+        <button class="btn btn-primary btn-block" @click="goToFocus">
+          开始专注提升排名
+        </button>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
+import { useTimerStore } from '@/stores/timer'
+import { getLeaderboard, type LeaderboardItem } from '@/api/leaderboard'
+import { RANK_CONFIG } from '@/types'
+
+const userStore = useUserStore()
+const timerStore = useTimerStore()
+
+const leaderboard = ref<LeaderboardItem[]>([])
+const loading = ref(false)
+
+const currentUserId = computed(() => userStore.user?.id || '')
+const dailyPoints = computed(() => timerStore.dailyPoints)
+const sessions = computed(() => timerStore.sessions)
+
+const totalMinutes = computed(() => {
+  return sessions.value.reduce((sum, s) => sum + (s.completed ? s.duration : 0), 0)
+})
+
+const myRank = computed(() => {
+  return leaderboard.value.find(item => item.id === currentUserId.value)
+})
+
+function getRankColor(rank: string) {
+  return RANK_CONFIG[rank as keyof typeof RANK_CONFIG]?.color || '#9ca3af'
+}
+
+function getRankIcon(rank: string) {
+  return RANK_CONFIG[rank as keyof typeof RANK_CONFIG]?.icon || '👤'
+}
+
+function getRankName(rank: string) {
+  return RANK_CONFIG[rank as keyof typeof RANK_CONFIG]?.name || rank
+}
+
+async function loadLeaderboard() {
+  loading.value = true
+  try {
+    const data = await getLeaderboard(20)
+    leaderboard.value = data
+  } catch (error) {
+    console.error('加载排行榜失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+function goToFocus() {
+  uni.switchTab({ url: '/pages/home/index' })
+}
+
+onMounted(() => {
+  userStore.loadUser()
+  timerStore.loadFromStorage()
+  
+  if (!userStore.isLoggedIn) {
+    uni.navigateTo({ url: '/pages/auth/index' })
+    return
+  }
+  
+  loadLeaderboard()
+})
+</script>
+
+<style lang="scss" scoped>
+.leaderboard-container {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding-bottom: 140rpx;
+}
+
+.header {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  padding: 60rpx 40rpx 40rpx;
+  text-align: center;
+}
+
+.title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #fff;
+  display: block;
+}
+
+.subtitle {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 8rpx;
+  display: block;
+}
+
+.podium {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 32rpx;
+  margin-top: -40rpx;
+  padding: 0 20rpx;
+}
+
+.podium-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.podium-item.first {
+  order: 2;
+}
+
+.podium-item.second {
+  order: 1;
+}
+
+.podium-item.third {
+  order: 3;
+}
+
+.crown {
+  font-size: 40rpx;
+  position: absolute;
+  top: -20rpx;
+}
+
+.podium-avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+}
+
+.podium-name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1f2937;
+  margin-top: 12rpx;
+  max-width: 120rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.podium-score {
+  display: flex;
+  align-items: baseline;
+  gap: 4rpx;
+  margin-top: 8rpx;
+}
+
+.podium-points {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.podium-label {
+  font-size: 20rpx;
+  color: #9ca3af;
+}
+
+.podium-stand {
+  width: 100rpx;
+  background: linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%);
+  border-radius: 8rpx 8rpx 0 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #6b7280;
+  margin-top: 8rpx;
+}
+
+.podium-item.first .podium-stand {
+  background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+  color: #d97706;
+}
+
+.podium-item.second .podium-stand {
+  background: linear-gradient(180deg, #f3f4f6 0%, #d1d5db 100%);
+  color: #6b7280;
+}
+
+.podium-item.third .podium-stand {
+  background: linear-gradient(180deg, #fef3c7 0%, #fed7aa 100%);
+  color: #b45309;
+}
+
+.list-section {
+  margin: 40rpx 30rpx;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.list-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.list-count {
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+
+.list-content {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 8rpx 0;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 28rpx;
+  border-bottom: 2rpx solid #f3f4f6;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+  
+  &.is-current {
+    background: #eff6ff;
+  }
+}
+
+.item-position {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+}
+
+.position-number {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.item-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  margin-right: 20rpx;
+}
+
+.item-info {
+  flex: 1;
+}
+
+.item-name {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #1f2937;
+  display: block;
+}
+
+.item-rank {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-top: 4rpx;
+  display: block;
+}
+
+.item-stats {
+  text-align: right;
+}
+
+.item-points {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #f59e0b;
+  display: block;
+}
+
+.item-minutes {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-top: 4rpx;
+  display: block;
+}
+
+.loading-more {
+  padding: 32rpx;
+  text-align: center;
+}
+
+.loading-text {
+  font-size: 26rpx;
+  color: #9ca3af;
+}
+
+.empty-state {
+  padding: 60rpx;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #9ca3af;
+}
+
+.my-rank {
+  padding: 0 30rpx;
+}
+
+.my-rank-card {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  box-shadow: 0 8rpx 32rpx rgba(59, 130, 246, 0.3);
+}
+
+.my-rank-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.my-rank-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.my-position {
+  display: flex;
+  align-items: baseline;
+  gap: 4rpx;
+}
+
+.position-num {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+.position-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.my-stats {
+  display: flex;
+  gap: 40rpx;
+  margin-bottom: 24rpx;
+}
+
+.my-stat {
+  flex: 1;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #fff;
+  display: block;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 8rpx;
+  display: block;
+}
+
+.my-rank-card .btn-primary {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2rpx solid rgba(255, 255, 255, 0.3);
+  
+  &:active {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+</style>
