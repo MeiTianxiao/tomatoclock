@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "专注软件开发需求后端服务",
   "scripts": {
+    "build": "node -e \"console.log('no build step')\"",
     "start": "node index.js",
     "dev": "nodemon index.js"
   },

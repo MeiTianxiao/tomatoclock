@@ -21,6 +21,25 @@ const useUserStore = common_vendor.defineStore("user", () => {
     common_vendor.index.setStorageSync("user", JSON.stringify(result.user));
     return result.user;
   }
+  async function wechatLoginUser(payload) {
+    const result = await api_user.wechatLogin(payload);
+    user.value = result.user;
+    token.value = result.token;
+    common_vendor.index.setStorageSync("token", result.token);
+    common_vendor.index.setStorageSync("user", JSON.stringify(result.user));
+    return result.user;
+  }
+  async function bindPhone(code) {
+    const result = await api_user.bindWeChatPhone(code);
+    if (result.user) {
+      user.value = result.user;
+      common_vendor.index.setStorageSync("user", JSON.stringify(result.user));
+    } else if (user.value) {
+      user.value = { ...user.value, phone_number: result.phone_number };
+      common_vendor.index.setStorageSync("user", JSON.stringify(user.value));
+    }
+    return result.phone_number;
+  }
   async function loadUser() {
     const storedToken = common_vendor.index.getStorageSync("token");
     const storedUser = common_vendor.index.getStorageSync("user");
@@ -46,6 +65,8 @@ const useUserStore = common_vendor.defineStore("user", () => {
     isLoggedIn,
     registerUser,
     loginUser,
+    wechatLoginUser,
+    bindPhone,
     loadUser,
     logout
   };

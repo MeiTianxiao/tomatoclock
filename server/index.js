@@ -37,6 +37,9 @@ const supabase =
       })
     : null;
 
+const wechatAppId = process.env.WECHAT_APPID || '';
+const wechatSecret = process.env.WECHAT_SECRET || '';
+
 app.get('/api/health', (req, res) => {
   res.json({
     code: 200,
@@ -48,9 +51,308 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/api/version', (req, res) => {
+  res.json({
+    code: 200,
+    message: 'ok',
+    data: {
+      commit: process.env.RENDER_GIT_COMMIT || '',
+      serviceId: process.env.RENDER_SERVICE_ID || '',
+      node: process.version,
+      wechatConfigured: !!wechatAppId && !!wechatSecret,
+      supabaseEnabled: !!supabase,
+      time: new Date().toISOString()
+    }
+  });
+});
+
+app.get('/api/routes', (req, res) => {
+  const stack = app?._router?.stack || [];
+  const routes = [];
+  for (const layer of stack) {
+    if (!layer?.route) continue;
+    const path = layer.route.path;
+    const methods = Object.keys(layer.route.methods || {}).filter(m => layer.route.methods[m]);
+    routes.push({ path, methods });
+  }
+  res.json({ code: 200, message: 'ok', data: routes });
+});
+
 let users = [];
 let sessions = [];
 let weeklyStats = [];
+
+let wechatAccessToken = { token: '', expiresAt: 0 };
+
+async function getWeChatAccessToken() {
+  if (!wechatAppId || !wechatSecret) {
+    return null;
+  }
+
+  const now = Date.now();
+  if (wechatAccessToken.token && wechatAccessToken.expiresAt > now + 60_000) {
+    return wechatAccessToken.token;
+  }
+
+  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${encodeURIComponent(
+    wechatAppId
+  )}&secret=${encodeURIComponent(wechatSecret)}`;
+
+  const resp = await fetch(url);
+  const json = await resp.json();
+  if (json?.access_token) {
+    wechatAccessToken = {
+      token: json.access_token,
+      expiresAt: now + (json.expires_in || 7200) * 1000
+    };
+    return wechatAccessToken.token;
+  }
+  return null;
+}
+
+async function wechatJscode2session(code) {
+  if (!wechatAppId || !wechatSecret) {
+    return { ok: false, message: '未配置微信 AppID/Secret' };
+  }
+
+  const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${encodeURIComponent(
+    wechatAppId
+  )}&secret=${encodeURIComponent(wechatSecret)}&js_code=${encodeURIComponent(
+    code
+  )}&grant_type=authorization_code`;
+
+  const resp = await fetch(url);
+  const json = await resp.json();
+  if (json?.errcode) {
+    return { ok: false, message: json.errmsg || '微信登录失败', data: json };
+  }
+  if (!json?.openid) {
+    return { ok: false, message: '微信登录失败(openid为空)', data: json };
+  }
+  return { ok: true, data: json };
+}
+
+async function ensureWeeklyStats(userId) {
+  const weekStart = getWeekStart();
+  const weekEnd = getWeekEnd();
+
+  if (supabase) {
+    const { error } = await supabase.from('weekly_stats').upsert(
+      {
+        user_id: userId,
+        week_start: weekStart,
+        week_end: weekEnd,
+        total_minutes: 0,
+        total_points: 0,
+        current_rank: 'intern',
+        highest_rank: 'intern',
+        sessions_completed: 0
+      },
+      { onConflict: 'user_id,week_start' }
+    );
+    return error ? { ok: false, message: error.message } : { ok: true };
+  }
+
+  const existed = weeklyStats.find(s => s.user_id === userId && s.week_start === weekStart);
+  if (!existed) {
+    weeklyStats.push({
+      id: uuidv4(),
+      user_id: userId,
+      week_start: weekStart,
+      week_end: weekEnd,
+      total_minutes: 0,
+      total_points: 0,
+      current_rank: 'intern',
+      highest_rank: 'intern',
+      sessions_completed: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+  }
+  return { ok: true };
+}
+
+async function pickUniqueNickname(preferred) {
+  const base = (preferred || '').trim();
+  const raw = base.length >= 2 ? base : `微信用户${Math.random().toString(16).slice(2, 6)}`;
+
+  const existsByNickname = async nickname => {
+    if (supabase) {
+      const { data, error } = await supabase.from('users').select('id').eq('nickname', nickname).maybeSingle();
+      if (error) return true;
+      return !!data;
+    }
+    return users.some(u => u.nickname === nickname);
+  };
+
+  let nickname = raw;
+  for (let i = 0; i < 20; i++) {
+    const exists = await existsByNickname(nickname);
+    if (!exists) return nickname;
+    nickname = `${raw}${Math.floor(10 + Math.random() * 90)}`;
+  }
+  return `${raw}${Date.now().toString().slice(-4)}`;
+}
+
+app.post('/api/wechat/login', async (req, res) => {
+  const { code, nickname, avatar_url } = req.body || {};
+  if (!code) {
+    return res.status(400).json({ code: 400, message: '缺少微信 code' });
+  }
+
+  const sessionResult = await wechatJscode2session(code);
+  if (!sessionResult.ok) {
+    return res.status(400).json({ code: 400, message: sessionResult.message, data: sessionResult.data || null });
+  }
+
+  const openid = sessionResult.data.openid;
+  const now = new Date().toISOString();
+
+  if (supabase) {
+    try {
+      const { data: existed, error: existedError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('wechat_openid', openid)
+        .maybeSingle();
+
+      if (existedError) {
+        return res.status(500).json({ code: 500, message: existedError.message });
+      }
+
+      if (existed) {
+        const updatePayload = { last_login: now };
+        if (typeof avatar_url === 'string' && avatar_url) updatePayload.avatar_url = avatar_url;
+        if (typeof nickname === 'string' && nickname.length >= 2) updatePayload.nickname = nickname;
+
+        const { data: updated, error: updateError } = await supabase
+          .from('users')
+          .update(updatePayload)
+          .eq('id', existed.id)
+          .select('*')
+          .single();
+
+        if (updateError) {
+          return res.status(500).json({ code: 500, message: updateError.message });
+        }
+
+        const stats = await ensureWeeklyStats(updated.id);
+        if (!stats.ok) {
+          return res.status(500).json({ code: 500, message: stats.message });
+        }
+
+        return res.json({ code: 200, message: '登录成功', data: { user: updated, token: updated.id } });
+      }
+
+      const finalNickname = await pickUniqueNickname(nickname);
+
+      const { data: newUser, error: insertError } = await supabase
+        .from('users')
+        .insert({
+          nickname: finalNickname,
+          avatar_url: typeof avatar_url === 'string' ? avatar_url : null,
+          wechat_openid: openid,
+          phone_number: null,
+          total_focus_minutes: 0,
+          total_sessions: 0,
+          last_login: now
+        })
+        .select('*')
+        .single();
+
+      if (insertError) {
+        return res.status(500).json({ code: 500, message: insertError.message });
+      }
+
+      const stats = await ensureWeeklyStats(newUser.id);
+      if (!stats.ok) {
+        return res.status(500).json({ code: 500, message: stats.message });
+      }
+
+      return res.json({ code: 200, message: '登录成功', data: { user: newUser, token: newUser.id } });
+    } catch {
+      return res.status(500).json({ code: 500, message: '服务异常' });
+    }
+  }
+
+  const existed = users.find(u => u.wechat_openid === openid);
+  if (existed) {
+    existed.last_login = now;
+    if (typeof avatar_url === 'string' && avatar_url) existed.avatar_url = avatar_url;
+    if (typeof nickname === 'string' && nickname.length >= 2) existed.nickname = nickname;
+    return res.json({ code: 200, message: '登录成功', data: { user: existed, token: existed.id } });
+  }
+
+  const finalNickname = await pickUniqueNickname(nickname);
+  const newUser = {
+    id: uuidv4(),
+    nickname: finalNickname,
+    avatar_url: typeof avatar_url === 'string' ? avatar_url : null,
+    wechat_openid: openid,
+    phone_number: null,
+    total_focus_minutes: 0,
+    total_sessions: 0,
+    created_at: now,
+    last_login: now
+  };
+  users.push(newUser);
+  await ensureWeeklyStats(newUser.id);
+  return res.json({ code: 200, message: '登录成功', data: { user: newUser, token: newUser.id } });
+});
+
+app.post('/api/wechat/phone', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const { code } = req.body || {};
+  if (!token) {
+    return res.status(401).json({ code: 401, message: '未登录' });
+  }
+  if (!code) {
+    return res.status(400).json({ code: 400, message: '缺少手机号 code' });
+  }
+
+  const accessToken = await getWeChatAccessToken();
+  if (!accessToken) {
+    return res.status(500).json({ code: 500, message: '获取微信 access_token 失败，请检查 AppID/Secret' });
+  }
+
+  const resp = await fetch(
+    `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${encodeURIComponent(accessToken)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    }
+  );
+  const json = await resp.json();
+  if (json?.errcode) {
+    return res.status(400).json({ code: 400, message: json.errmsg || '获取手机号失败', data: json });
+  }
+
+  const phoneNumber = json?.phone_info?.phoneNumber || '';
+  if (!phoneNumber) {
+    return res.status(400).json({ code: 400, message: '获取手机号失败(号码为空)', data: json });
+  }
+
+  if (supabase) {
+    const { data: updated, error } = await supabase
+      .from('users')
+      .update({ phone_number: phoneNumber })
+      .eq('id', token)
+      .select('*')
+      .maybeSingle();
+    if (error) {
+      return res.status(500).json({ code: 500, message: error.message });
+    }
+    return res.json({ code: 200, message: 'success', data: { phone_number: phoneNumber, user: updated } });
+  }
+
+  const user = users.find(u => u.id === token);
+  if (!user) {
+    return res.status(401).json({ code: 401, message: '用户不存在' });
+  }
+  user.phone_number = phoneNumber;
+  return res.json({ code: 200, message: 'success', data: { phone_number: phoneNumber, user } });
+});
 
 function getWeekStart() {
   const now = new Date();

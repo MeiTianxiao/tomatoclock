@@ -9,9 +9,9 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const userStore = stores_user.useUserStore();
     const timerStore = stores_timer.useTimerStore();
     const sessions = common_vendor.computed(() => timerStore.sessions);
-    common_vendor.computed(() => timerStore.dailyPoints);
+    const dailyPoints = common_vendor.computed(() => timerStore.dailyPoints);
     const currentRank = common_vendor.computed(() => timerStore.currentRank);
-    const currentRankInfo = common_vendor.computed(() => types_index.RANK_CONFIG[currentRank.value]);
+    common_vendor.computed(() => types_index.RANK_CONFIG[currentRank.value]);
     const totalMinutes = common_vendor.computed(() => {
       return sessions.value.reduce((sum, s) => sum + (s.completed ? s.duration : 0), 0);
     });
@@ -50,7 +50,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       });
       return data;
     });
-    const categoryStats = common_vendor.computed(() => {
+    common_vendor.computed(() => {
       const stats = {};
       Object.keys(types_index.CATEGORY_CONFIG).forEach((key) => {
         stats[key] = {
@@ -111,31 +111,18 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         a: common_vendor.t(totalMinutes.value),
         b: common_vendor.t(totalSessions.value),
         c: common_vendor.t(totalPoints.value),
-        d: common_vendor.t(currentRankInfo.value.icon),
-        e: common_vendor.t(currentRankInfo.value.name),
-        f: common_vendor.f(weekData.value, (day, index, i0) => {
+        d: common_vendor.t(dailyPoints.value),
+        e: common_vendor.f(weekData.value, (day, index, i0) => {
           return {
             a: day.percentage + "%",
             b: day.color,
             c: common_vendor.t(day.label),
-            d: common_vendor.t(day.points),
-            e: index
+            d: index
           };
         }),
-        g: common_vendor.f(categoryStats.value, (stat, category, i0) => {
-          return {
-            a: common_vendor.t(stat.icon),
-            b: stat.color,
-            c: common_vendor.t(stat.name),
-            d: stat.percentage + "%",
-            e: stat.color,
-            f: common_vendor.t(stat.minutes),
-            g: common_vendor.t(stat.percentage),
-            h: category
-          };
-        }),
-        h: common_vendor.o(viewAllHistory, "65"),
-        i: common_vendor.f(recentSessions.value, (session, k0, i0) => {
+        f: recentSessions.value.length === 0
+      }, recentSessions.value.length === 0 ? {} : {
+        g: common_vendor.f(recentSessions.value.slice(0, 10), (session, k0, i0) => {
           return {
             a: common_vendor.t(getCategoryIcon(session.category)),
             b: getCategoryColor(session.category),
@@ -146,8 +133,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             g: session.id
           };
         }),
-        j: recentSessions.value.length === 0
-      }, recentSessions.value.length === 0 ? {} : {});
+        h: common_vendor.o(viewAllHistory, "e6")
+      });
     };
   }
 });

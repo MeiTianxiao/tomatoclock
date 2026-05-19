@@ -1,123 +1,88 @@
 <template>
-  <view class="home-container">
-    <view class="header">
-      <view class="greeting">
-        <text class="greeting-text">{{ greeting }}，{{ user?.nickname }}</text>
-        <text class="date-text">{{ currentDate }}</text>
+  <view class="page">
+    <view class="card greeting-card">
+      <view class="greeting-row">
+        <view class="avatar">
+          <image v-if="user?.avatar_url" class="avatar-img" :src="user.avatar_url" mode="aspectFill" />
+          <view v-else class="avatar-fallback">{{ user?.nickname?.slice(0, 1) || '你' }}</view>
+        </view>
+        <view class="greeting-texts">
+          <text class="greeting-title">{{ greeting }}，{{ user?.nickname || '同学' }}！</text>
+          <text class="greeting-subtitle">下午好！保持专注，冲刺今日目标！</text>
+        </view>
       </view>
-      <view class="rank-badge" :style="{ background: rankInfo.color }">
-        <text class="rank-icon">{{ rankInfo.icon }}</text>
-        <text class="rank-name">{{ rankInfo.name }}</text>
-      </view>
+      <view class="greeting-banner">保持专注，你一定能做到！</view>
+      <text class="greeting-meta">本周已专注 {{ (totalMinutes / 60).toFixed(1) }} 小时，距离 {{ nextRank?.name || '已满级' }} 还需 {{ pointsToNextRank }} 分</text>
     </view>
 
-    <view class="stats-card">
-      <view class="stat-item">
-        <text class="stat-value">{{ dailyPoints }}</text>
-        <text class="stat-label">今日积分</text>
+    <view class="card points-card">
+      <view class="points-avatar">
+        <view class="avatar lg">
+          <image v-if="user?.avatar_url" class="avatar-img" :src="user.avatar_url" mode="aspectFill" />
+          <view v-else class="avatar-fallback">{{ user?.nickname?.slice(0, 1) || '你' }}</view>
+        </view>
+        <view class="rank-pill" :style="{ background: rankInfo.color }">{{ rankInfo.name }}</view>
       </view>
-      <view class="stat-divider"></view>
-      <view class="stat-item">
-        <text class="stat-value">{{ totalMinutes }}<text class="stat-unit">min</text></text>
-        <text class="stat-label">专注时长</text>
-      </view>
-      <view class="stat-divider"></view>
-      <view class="stat-item">
-        <text class="stat-value">{{ sessions.length }}</text>
-        <text class="stat-label">完成任务</text>
-      </view>
-    </view>
-
-    <view class="progress-card">
-      <view class="progress-header">
-        <text class="progress-title">等级进度</text>
-        <text class="progress-next">下一级：{{ nextRank?.name || '已满级' }}</text>
+      <text class="points-label">当前积分</text>
+      <text class="points-value">{{ dailyPoints }}</text>
+      <view class="points-progress">
+        <text class="progress-left">距离 {{ nextRank?.name || '已满级' }}</text>
+        <text class="progress-right">{{ pointsToNextRank }} 分</text>
       </view>
       <view class="progress-bar">
         <view class="progress-fill" :style="{ width: progressToNextRank + '%', background: rankInfo.color }"></view>
       </view>
-      <view class="progress-info">
-        <text class="progress-current">{{ dailyPoints }} 积分</text>
-        <text class="progress-required">/{{ nextRank?.points || RANK_CONFIG.master.points }} 积分</text>
-      </view>
     </view>
 
-    <view class="start-section">
-      <text class="section-title">开始专注</text>
-      
-      <view class="duration-options">
-        <button
+    <view class="card section-card">
+      <view class="section-title-row">
+        <text class="section-title">选择专注时长</text>
+      </view>
+      <view class="duration-grid">
+        <view
           v-for="duration in durationOptions"
           :key="duration.value"
-          class="duration-btn"
+          class="duration-item"
           :class="{ active: selectedDuration === duration.value }"
           @click="selectedDuration = duration.value"
         >
-          <text class="duration-value">{{ duration.value }}</text>
+          <text class="duration-num">{{ duration.value }}</text>
           <text class="duration-unit">分钟</text>
-        </button>
-      </view>
-
-      <view class="mode-options">
-        <button
-          class="mode-btn"
-          :class="{ active: selectedMode === 'strict' }"
-          @click="selectedMode = 'strict'"
-        >
-          <text class="mode-icon">⚡</text>
-          <text class="mode-text">专注模式</text>
-        </button>
-        <button
-          class="mode-btn"
-          :class="{ active: selectedMode === 'gentle' }"
-          @click="selectedMode = 'gentle'"
-        >
-          <text class="mode-icon">🌿</text>
-          <text class="mode-text">温和模式</text>
-        </button>
-      </view>
-
-      <view class="category-options">
-        <button
-          v-for="(config, key) in CATEGORY_CONFIG"
-          :key="key"
-          class="category-btn"
-          :class="{ active: selectedCategory === key }"
-          :style="{ '--category-color': config.color }"
-          @click="selectedCategory = key as FocusCategory"
-        >
-          <text class="category-icon">{{ config.icon }}</text>
-          <text class="category-name">{{ config.name }}</text>
-        </button>
-      </view>
-
-      <button class="btn btn-primary btn-block btn-lg start-btn" @click="startFocus">
-        <text class="start-icon">🎯</text>
-        <text class="start-text">开始专注</text>
-      </button>
-    </view>
-
-    <view class="history-section">
-      <view class="section-header">
-        <text class="section-title">今日记录</text>
-        <text class="view-all" @click="goToStats">查看全部</text>
-      </view>
-      
-      <view v-if="todaySessions.length > 0" class="history-list">
-        <view v-for="session in todaySessions" :key="session.id" class="history-item">
-          <view class="history-category" :style="{ background: getCategoryColor(session.category) }">
-            {{ getCategoryIcon(session.category) }}
-          </view>
-          <view class="history-info">
-            <text class="history-name">{{ getCategoryName(session.category) }}</text>
-            <text class="history-time">{{ session.duration }}分钟 · +{{ session.points }}积分</text>
-          </view>
+          <text class="duration-desc">{{ duration.desc }}</text>
+        </view>
+        <view class="duration-item" :class="{ active: isCustomDuration }" @click="pickCustomDuration">
+          <text class="duration-custom-title">自定义时长</text>
+          <text class="duration-custom-desc">(10-120分钟)</text>
         </view>
       </view>
-      <view v-else class="empty-history">
-        <text class="empty-icon">📝</text>
-        <text class="empty-text">暂无记录，开始今日专注吧！</text>
+
+      <text class="section-subtitle">选择专注事项</text>
+      <view class="category-grid">
+        <view
+          v-for="(config, key) in CATEGORY_CONFIG"
+          :key="key"
+          class="category-item"
+          :class="{ active: selectedCategory === key }"
+          @click="selectedCategory = key as FocusCategory"
+        >
+          <view class="category-icon" :style="{ color: config.color }">{{ config.icon }}</view>
+          <text class="category-name">{{ config.name }}</text>
+        </view>
       </view>
+
+      <text class="section-subtitle">选择专注模式</text>
+      <view class="mode-grid">
+        <view class="mode-item gentle" :class="{ active: selectedMode === 'gentle' }" @click="selectedMode = 'gentle'">
+          <text class="mode-title">温和模式</text>
+          <text class="mode-desc">允许退出2次，第3次退出扣除一半积分</text>
+        </view>
+        <view class="mode-item strict" :class="{ active: selectedMode === 'strict' }" @click="selectedMode = 'strict'">
+          <text class="mode-title">严格模式</text>
+          <text class="mode-desc">退出则清零当日所有积分，积分×1.2倍</text>
+        </view>
+      </view>
+
+      <button class="start-btn" @click="startFocus">开始工作</button>
     </view>
   </view>
 </template>
@@ -134,12 +99,14 @@ const timerStore = useTimerStore()
 const selectedDuration = ref(25)
 const selectedMode = ref<'strict' | 'gentle'>('strict')
 const selectedCategory = ref<FocusCategory>('study')
+const isCustomDuration = ref(false)
 
 const durationOptions = [
-  { value: 15, label: '15分钟' },
-  { value: 25, label: '25分钟' },
-  { value: 45, label: '45分钟' },
-  { value: 60, label: '60分钟' }
+  { value: 15, desc: '实习生任务' },
+  { value: 30, desc: '科员任务' },
+  { value: 45, desc: '科长任务' },
+  { value: 60, desc: '处长任务' },
+  { value: 90, desc: '局长任务' }
 ]
 
 const user = computed(() => userStore.user)
@@ -157,6 +124,12 @@ const totalMinutes = computed(() => {
 
 const todaySessions = computed(() => {
   return sessions.value.slice(-3).reverse()
+})
+
+const pointsToNextRank = computed(() => {
+  const target = nextRank.value?.points ?? RANK_CONFIG.master.points
+  const left = Math.max(0, target - dailyPoints.value)
+  return left
 })
 
 const greeting = computed(() => {
@@ -192,8 +165,18 @@ function startFocus() {
   uni.navigateTo({ url: '/pages/timer/index' })
 }
 
-function goToStats() {
-  uni.switchTab({ url: '/pages/stats/index' })
+function pickCustomDuration() {
+  const options = Array.from({ length: 12 }, (_, i) => (i + 1) * 10)
+  uni.showActionSheet({
+    itemList: options.map(v => `${v} 分钟`),
+    success: (res) => {
+      const picked = options[res.tapIndex]
+      if (picked) {
+        selectedDuration.value = picked
+        isCustomDuration.value = true
+      }
+    }
+  })
 }
 
 onMounted(() => {
@@ -207,354 +190,313 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.home-container {
+.page {
   min-height: 100vh;
-  background: #f5f5f5;
-  padding-bottom: 140rpx;
+  padding: 28rpx 24rpx 140rpx;
+  box-sizing: border-box;
+  background: #f2f5ff;
 }
 
-.header {
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  padding: 60rpx 40rpx 40rpx;
+.card {
+  background: #fff;
+  border-radius: 28rpx;
+  padding: 32rpx;
+  box-shadow: 0 18rpx 60rpx rgba(15, 23, 42, 0.08);
+  margin-bottom: 28rpx;
+}
+
+.greeting-row {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  gap: 22rpx;
 }
 
-.greeting-text {
-  font-size: 36rpx;
-  font-weight: 600;
-  color: #fff;
+.avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 44rpx;
+  overflow: hidden;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar.lg {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 70rpx;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+}
+
+.avatar-fallback {
+  font-size: 40rpx;
+  font-weight: 900;
+  color: #111827;
+}
+
+.greeting-texts {
+  flex: 1;
+}
+
+.greeting-title {
+  font-size: 40rpx;
+  font-weight: 900;
+  color: #0f172a;
   display: block;
 }
 
-.date-text {
+.greeting-subtitle {
   font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.8);
+  color: #64748b;
   margin-top: 8rpx;
   display: block;
 }
 
-.rank-badge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16rpx 24rpx;
-  border-radius: 16rpx;
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.rank-icon {
-  font-size: 36rpx;
-}
-
-.rank-name {
-  font-size: 22rpx;
-  color: #fff;
-  margin-top: 4rpx;
-}
-
-.stats-card {
-  display: flex;
-  background: #fff;
-  margin: -30rpx 30rpx 24rpx;
-  padding: 32rpx;
-  border-radius: 24rpx;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
-}
-
-.stat-item {
-  flex: 1;
+.greeting-banner {
+  margin-top: 22rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 20rpx;
+  background: #f3f4ff;
+  color: #334155;
+  font-weight: 800;
+  font-size: 28rpx;
   text-align: center;
 }
 
-.stat-value {
-  font-size: 40rpx;
+.greeting-meta {
+  display: block;
+  margin-top: 16rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #94a3b8;
+}
+
+.points-card {
+  padding-top: 44rpx;
+  text-align: center;
+}
+
+.points-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.rank-pill {
+  padding: 10rpx 22rpx;
+  border-radius: 999rpx;
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.points-label {
+  display: block;
+  margin-top: 18rpx;
+  color: #475569;
+  font-size: 26rpx;
   font-weight: 700;
-  color: #1f2937;
+}
+
+.points-value {
   display: block;
+  margin-top: 10rpx;
+  font-size: 64rpx;
+  font-weight: 900;
+  color: #94a3b8;
 }
 
-.stat-unit {
-  font-size: 24rpx;
-  font-weight: 400;
-  color: #6b7280;
-}
-
-.stat-label {
-  font-size: 24rpx;
-  color: #9ca3af;
-  margin-top: 8rpx;
-  display: block;
-}
-
-.stat-divider {
-  width: 2rpx;
-  background: #e5e7eb;
-  margin: 0 20rpx;
-}
-
-.progress-card {
-  background: #fff;
-  margin: 0 30rpx 24rpx;
-  padding: 28rpx;
-  border-radius: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-}
-
-.progress-header {
+.points-progress {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 16rpx;
-}
-
-.progress-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.progress-next {
+  margin-top: 18rpx;
   font-size: 24rpx;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .progress-bar {
-  height: 16rpx;
-  background: #f3f4f6;
-  border-radius: 8rpx;
+  margin-top: 14rpx;
+  height: 12rpx;
+  background: #e5e7eb;
+  border-radius: 999rpx;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  border-radius: 8rpx;
-  transition: width 0.3s ease;
+  border-radius: 999rpx;
 }
 
-.progress-info {
+.section-card {
+  padding: 34rpx 32rpx 40rpx;
+}
+
+.section-title-row {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 12rpx;
-}
-
-.progress-current {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #3b82f6;
-}
-
-.progress-required {
-  font-size: 24rpx;
-  color: #9ca3af;
-}
-
-.start-section {
-  background: #fff;
-  margin: 0 30rpx 24rpx;
-  padding: 28rpx;
-  border-radius: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  align-items: center;
+  justify-content: space-between;
 }
 
 .section-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 24rpx;
-  display: block;
+  font-size: 34rpx;
+  font-weight: 900;
+  color: #0f172a;
 }
 
-.duration-options {
-  display: flex;
-  gap: 16rpx;
-  margin-bottom: 24rpx;
+.duration-grid {
+  margin-top: 22rpx;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18rpx;
 }
 
-.duration-btn {
-  flex: 1;
-  padding: 20rpx;
-  background: #f9fafb;
+.duration-item {
+  border-radius: 22rpx;
   border: 2rpx solid #e5e7eb;
-  border-radius: 16rpx;
-  transition: all 0.3s;
-  
-  &.active {
-    background: #eff6ff;
-    border-color: #3b82f6;
-  }
+  padding: 22rpx 10rpx;
+  text-align: center;
+  background: #fff;
 }
 
-.duration-value {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #1f2937;
+.duration-item.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.duration-num {
   display: block;
+  font-size: 44rpx;
+  font-weight: 900;
+  color: #0f172a;
 }
 
 .duration-unit {
+  display: block;
   font-size: 22rpx;
-  color: #9ca3af;
+  color: #64748b;
+  margin-top: 4rpx;
 }
 
-.mode-options {
-  display: flex;
-  gap: 20rpx;
-  margin-bottom: 24rpx;
+.duration-desc {
+  display: block;
+  font-size: 22rpx;
+  color: #94a3b8;
+  margin-top: 10rpx;
 }
 
-.mode-btn {
-  flex: 1;
-  padding: 24rpx;
-  background: #f9fafb;
+.duration-custom-title {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 900;
+  color: #0f172a;
+  margin-top: 10rpx;
+}
+
+.duration-custom-desc {
+  display: block;
+  margin-top: 10rpx;
+  color: #94a3b8;
+  font-size: 22rpx;
+}
+
+.section-subtitle {
+  display: block;
+  margin-top: 30rpx;
+  font-size: 30rpx;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.category-grid {
+  margin-top: 18rpx;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18rpx;
+}
+
+.category-item {
+  border-radius: 22rpx;
   border: 2rpx solid #e5e7eb;
-  border-radius: 16rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-  transition: all 0.3s;
-  
-  &.active {
-    background: #eff6ff;
-    border-color: #3b82f6;
-  }
+  padding: 22rpx 10rpx;
+  background: #fff;
+  text-align: center;
 }
 
-.mode-icon {
-  font-size: 32rpx;
-}
-
-.mode-text {
-  font-size: 28rpx;
-  color: #1f2937;
-}
-
-.category-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-  margin-bottom: 24rpx;
-}
-
-.category-btn {
-  width: calc(33.33% - 12rpx);
-  padding: 20rpx 16rpx;
-  background: #f9fafb;
-  border: 2rpx solid #e5e7eb;
-  border-radius: 16rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
-  transition: all 0.3s;
-  
-  &.active {
-    border-color: var(--category-color);
-    background: #ffffff;
-    box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-  }
+.category-item.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
 }
 
 .category-icon {
-  font-size: 36rpx;
+  font-size: 40rpx;
+  font-weight: 700;
 }
 
 .category-name {
-  font-size: 24rpx;
-  color: #4b5563;
+  display: block;
+  margin-top: 10rpx;
+  color: #0f172a;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.mode-grid {
+  margin-top: 18rpx;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
+}
+
+.mode-item {
+  border-radius: 22rpx;
+  padding: 24rpx 22rpx;
+  border: 2rpx solid #e5e7eb;
+  background: #fff;
+}
+
+.mode-item.gentle {
+  border-color: rgba(34, 197, 94, 0.45);
+}
+
+.mode-item.gentle.active {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.mode-item.strict.active {
+  border-color: #111827;
+  background: #f3f4f6;
+}
+
+.mode-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.mode-desc {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #64748b;
+  line-height: 1.5;
 }
 
 .start-btn {
-  padding: 32rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-}
-
-.start-icon {
-  font-size: 36rpx;
-}
-
-.start-text {
-  font-size: 32rpx;
-  font-weight: 600;
-}
-
-.history-section {
-  background: #fff;
-  margin: 0 30rpx;
-  padding: 28rpx;
-  border-radius: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20rpx;
-}
-
-.view-all {
-  font-size: 26rpx;
-  color: #3b82f6;
-}
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.history-item {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-.history-category {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 16rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32rpx;
-}
-
-.history-info {
-  flex: 1;
-}
-
-.history-name {
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #1f2937;
-  display: block;
-}
-
-.history-time {
-  font-size: 24rpx;
-  color: #9ca3af;
-  margin-top: 4rpx;
-  display: block;
-}
-
-.empty-history {
-  text-align: center;
-  padding: 40rpx;
-}
-
-.empty-icon {
-  font-size: 64rpx;
-  display: block;
-  margin-bottom: 16rpx;
-}
-
-.empty-text {
-  font-size: 26rpx;
-  color: #9ca3af;
+  margin-top: 28rpx;
+  height: 112rpx;
+  border-radius: 26rpx;
+  border: none;
+  color: #fff;
+  font-size: 34rpx;
+  font-weight: 900;
+  background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
 }
 </style>

@@ -1,106 +1,51 @@
 <template>
-  <view class="stats-container">
-    <view class="header">
-      <text class="title">📊 统计数据</text>
-      <text class="subtitle">查看你的专注记录</text>
-    </view>
+  <view class="page">
+    <text class="page-title">数据统计</text>
 
-    <view class="summary-cards">
-      <view class="summary-card">
-        <view class="card-icon">⏱️</view>
-        <view class="card-content">
-          <text class="card-value">{{ totalMinutes }}</text>
-          <text class="card-label">总专注时长（分钟）</text>
-        </view>
+    <view class="grid">
+      <view class="metric">
+        <text class="metric-icon">🕒</text>
+        <text class="metric-value">{{ totalMinutes }}</text>
+        <text class="metric-label">累计分钟</text>
       </view>
-      <view class="summary-card">
-        <view class="card-icon">🎯</view>
-        <view class="card-content">
-          <text class="card-value">{{ totalSessions }}</text>
-          <text class="card-label">完成任务数</text>
-        </view>
+      <view class="metric">
+        <text class="metric-icon">🎯</text>
+        <text class="metric-value">{{ totalSessions }}</text>
+        <text class="metric-label">完成任务</text>
       </view>
-      <view class="summary-card">
-        <view class="card-icon">⭐</view>
-        <view class="card-content">
-          <text class="card-value">{{ totalPoints }}</text>
-          <text class="card-label">累计积分</text>
-        </view>
+      <view class="metric">
+        <text class="metric-icon">🏆</text>
+        <text class="metric-value">{{ totalPoints }}</text>
+        <text class="metric-label">累计积分</text>
       </view>
-      <view class="summary-card">
-        <view class="card-icon">👑</view>
-        <view class="card-content">
-          <text class="card-value">{{ currentRankInfo.icon }} {{ currentRankInfo.name }}</text>
-          <text class="card-label">当前等级</text>
-        </view>
+      <view class="metric">
+        <text class="metric-icon">🎖️</text>
+        <text class="metric-value">{{ dailyPoints }}</text>
+        <text class="metric-label">今日积分</text>
       </view>
     </view>
 
-    <view class="section">
-      <view class="section-header">
-        <text class="section-title">本周趋势</text>
-      </view>
-      <view class="trend-chart">
-        <view class="chart-bars">
-          <view
-            v-for="(day, index) in weekData"
-            :key="index"
-            class="bar-item"
-          >
-            <view class="bar-container">
-              <view
-                class="bar-fill"
-                :style="{ height: day.percentage + '%', background: day.color }"
-              ></view>
-            </view>
-            <text class="bar-label">{{ day.label }}</text>
-            <text class="bar-value">{{ day.points }}</text>
+    <view class="card">
+      <text class="card-title">本周专注时长</text>
+      <view class="trend">
+        <view v-for="(day, index) in weekData" :key="index" class="day">
+          <view class="bar">
+            <view class="fill" :style="{ height: day.percentage + '%', background: day.color }"></view>
           </view>
+          <text class="day-label">{{ day.label }}</text>
         </view>
       </view>
     </view>
 
-    <view class="section">
-      <view class="section-header">
-        <text class="section-title">分类统计</text>
+    <view class="card">
+      <text class="card-title">今日记录</text>
+      <view v-if="recentSessions.length === 0" class="empty">
+        <text class="empty-icon">🕒</text>
+        <text class="empty-text">还没有完成任何专注任务</text>
+        <text class="empty-sub">开始第一个专注吧！</text>
       </view>
-      <view class="category-stats">
-        <view
-          v-for="(stat, category) in categoryStats"
-          :key="category"
-          class="category-item"
-        >
-          <view class="category-header">
-            <view class="category-icon" :style="{ background: stat.color }">
-              {{ stat.icon }}
-            </view>
-            <text class="category-name">{{ stat.name }}</text>
-          </view>
-          <view class="category-bar">
-            <view
-              class="category-fill"
-              :style="{ width: stat.percentage + '%', background: stat.color }"
-            ></view>
-          </view>
-          <view class="category-info">
-            <text class="category-time">{{ stat.minutes }}分钟</text>
-            <text class="category-percent">{{ stat.percentage }}%</text>
-          </view>
-        </view>
-      </view>
-    </view>
-
-    <view class="section">
-      <view class="section-header">
-        <text class="section-title">最近记录</text>
-        <text class="view-all" @click="viewAllHistory">查看全部</text>
-      </view>
-      <view class="history-list">
-        <view
-          v-for="session in recentSessions"
-          :key="session.id"
-          class="history-item"
-        >
+      <view v-else class="history">
+        <view v-for="session in recentSessions.slice(0, 10)" :key="session.id" class="history-item">
           <view class="history-left">
             <view class="history-icon" :style="{ background: getCategoryColor(session.category) }">
               {{ getCategoryIcon(session.category) }}
@@ -115,11 +60,7 @@
             <text class="history-duration">{{ session.duration }}分钟</text>
           </view>
         </view>
-
-        <view v-if="recentSessions.length === 0" class="empty-history">
-          <text class="empty-icon">📝</text>
-          <text class="empty-text">暂无记录</text>
-        </view>
+        <button class="more-btn" @click="viewAllHistory">查看全部</button>
       </view>
     </view>
   </view>
@@ -261,231 +202,162 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.stats-container {
+.page {
   min-height: 100vh;
-  background: #f5f5f5;
-  padding-bottom: 140rpx;
+  padding: 28rpx 24rpx 140rpx;
+  box-sizing: border-box;
+  background: #f2f5ff;
 }
 
-.header {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  padding: 60rpx 40rpx 40rpx;
-}
-
-.title {
+.page-title {
+  display: block;
   font-size: 40rpx;
-  font-weight: 700;
-  color: #fff;
-  display: block;
+  font-weight: 900;
+  color: #0f172a;
+  text-align: center;
+  margin: 10rpx 0 26rpx;
 }
 
-.subtitle {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.8);
-  margin-top: 8rpx;
-  display: block;
-}
-
-.summary-cards {
+.grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20rpx;
-  margin: -30rpx 30rpx 24rpx;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
 }
 
-.summary-card {
+.metric {
   background: #fff;
-  border-radius: 20rpx;
-  padding: 24rpx;
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  border-radius: 22rpx;
+  padding: 28rpx 24rpx;
+  box-shadow: 0 18rpx 60rpx rgba(15, 23, 42, 0.08);
+  text-align: center;
 }
 
-.card-icon {
-  font-size: 40rpx;
-}
-
-.card-content {
-  flex: 1;
-}
-
-.card-value {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #1f2937;
+.metric-icon {
   display: block;
+  font-size: 42rpx;
 }
 
-.card-label {
-  font-size: 22rpx;
-  color: #9ca3af;
-  margin-top: 4rpx;
+.metric-value {
   display: block;
-}
-
-.section {
-  background: #fff;
-  margin: 0 30rpx 24rpx;
-  border-radius: 24rpx;
-  padding: 28rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24rpx;
-}
-
-.section-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.view-all {
-  font-size: 26rpx;
-  color: #3b82f6;
-}
-
-.trend-chart {
-  padding: 16rpx 0;
-}
-
-.chart-bars {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  height: 200rpx;
-}
-
-.bar-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1;
-}
-
-.bar-container {
-  width: 36rpx;
-  height: 140rpx;
-  background: #f3f4f6;
-  border-radius: 18rpx;
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-}
-
-.bar-fill {
-  width: 100%;
-  border-radius: 18rpx;
-  transition: height 0.5s ease;
-}
-
-.bar-label {
-  font-size: 20rpx;
-  color: #9ca3af;
   margin-top: 12rpx;
+  font-size: 46rpx;
+  font-weight: 900;
+  color: #0f172a;
 }
 
-.bar-value {
-  font-size: 22rpx;
-  font-weight: 600;
-  color: #374151;
-  margin-top: 4rpx;
-}
-
-.category-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-}
-
-.category-item {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-}
-
-.category-header {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.category-icon {
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 12rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.metric-label {
+  display: block;
+  margin-top: 6rpx;
   font-size: 24rpx;
+  color: #64748b;
 }
 
-.category-name {
-  font-size: 26rpx;
-  font-weight: 500;
-  color: #374151;
+.card {
+  background: #fff;
+  border-radius: 28rpx;
+  padding: 32rpx;
+  box-shadow: 0 18rpx 60rpx rgba(15, 23, 42, 0.08);
+  margin-top: 26rpx;
 }
 
-.category-bar {
-  height: 12rpx;
-  background: #f3f4f6;
-  border-radius: 6rpx;
-  overflow: hidden;
+.card-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 900;
+  color: #0f172a;
 }
 
-.category-fill {
-  height: 100%;
-  border-radius: 6rpx;
-  transition: width 0.5s ease;
-}
-
-.category-info {
+.trend {
+  margin-top: 28rpx;
   display: flex;
   justify-content: space-between;
+  align-items: flex-end;
+  height: 240rpx;
+  gap: 10rpx;
 }
 
-.category-time {
-  font-size: 24rpx;
-  color: #6b7280;
-}
-
-.category-percent {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #374151;
-}
-
-.history-list {
+.day {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10rpx;
+}
+
+.bar {
+  width: 100%;
+  max-width: 56rpx;
+  height: 200rpx;
+  border-radius: 999rpx;
+  background: #eef2ff;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+
+.fill {
+  width: 100%;
+  border-radius: 999rpx;
+}
+
+.day-label {
+  font-size: 22rpx;
+  color: #64748b;
+}
+
+.empty {
+  margin-top: 28rpx;
+  border-radius: 22rpx;
+  background: #f8fafc;
+  padding: 60rpx 22rpx;
+  text-align: center;
+}
+
+.empty-icon {
+  display: block;
+  font-size: 64rpx;
+  margin-bottom: 16rpx;
+}
+
+.empty-text {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.empty-sub {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #64748b;
+}
+
+.history {
+  margin-top: 22rpx;
 }
 
 .history-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20rpx;
-  background: #f9fafb;
-  border-radius: 16rpx;
+  padding: 18rpx 16rpx;
+  border-radius: 18rpx;
+  background: #f8fafc;
+  margin-top: 14rpx;
 }
 
 .history-left {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 14rpx;
 }
 
 .history-icon {
   width: 56rpx;
   height: 56rpx;
-  border-radius: 14rpx;
+  border-radius: 18rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -493,54 +365,49 @@ onMounted(() => {
 }
 
 .history-info {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
 }
 
 .history-name {
-  font-size: 26rpx;
-  font-weight: 500;
-  color: #374151;
-  display: block;
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #0f172a;
 }
 
 .history-time {
   font-size: 22rpx;
-  color: #9ca3af;
-  margin-top: 4rpx;
-  display: block;
+  color: #64748b;
 }
 
 .history-right {
-  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4rpx;
 }
 
 .history-points {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: #10b981;
-  display: block;
+  font-size: 28rpx;
+  font-weight: 900;
+  color: #3b82f6;
 }
 
 .history-duration {
   font-size: 22rpx;
-  color: #9ca3af;
-  margin-top: 4rpx;
-  display: block;
+  color: #64748b;
 }
 
-.empty-history {
-  text-align: center;
-  padding: 40rpx;
-}
-
-.empty-icon {
-  font-size: 64rpx;
-  display: block;
-  margin-bottom: 16rpx;
-}
-
-.empty-text {
-  font-size: 26rpx;
-  color: #9ca3af;
+.more-btn {
+  margin-top: 20rpx;
+  height: 88rpx;
+  border-radius: 22rpx;
+  border: none;
+  width: 100%;
+  background: #f3f4f6;
+  color: #0f172a;
+  font-size: 28rpx;
+  font-weight: 900;
 }
 </style>

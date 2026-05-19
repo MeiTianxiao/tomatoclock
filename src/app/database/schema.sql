@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nickname VARCHAR(50) NOT NULL,
   avatar_url TEXT,
+  wechat_openid TEXT UNIQUE,
+  phone_number TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   last_login TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   total_focus_minutes INTEGER DEFAULT 0,

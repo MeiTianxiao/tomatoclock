@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '@/types'
-import { register, login, getUserInfo } from '@/api/user'
+import { register, login, wechatLogin, bindWeChatPhone, getUserInfo } from '@/api/user'
 
 export const useUserStore = defineStore('user', () => {
   const user = ref<User | null>(null)
@@ -25,6 +25,27 @@ export const useUserStore = defineStore('user', () => {
     uni.setStorageSync('token', result.token)
     uni.setStorageSync('user', JSON.stringify(result.user))
     return result.user
+  }
+
+  async function wechatLoginUser(payload: { code: string; nickname?: string; avatar_url?: string }) {
+    const result = await wechatLogin(payload)
+    user.value = result.user
+    token.value = result.token
+    uni.setStorageSync('token', result.token)
+    uni.setStorageSync('user', JSON.stringify(result.user))
+    return result.user
+  }
+
+  async function bindPhone(code: string) {
+    const result = await bindWeChatPhone(code)
+    if (result.user) {
+      user.value = result.user
+      uni.setStorageSync('user', JSON.stringify(result.user))
+    } else if (user.value) {
+      user.value = { ...user.value, phone_number: result.phone_number }
+      uni.setStorageSync('user', JSON.stringify(user.value))
+    }
+    return result.phone_number
   }
 
   async function loadUser() {
@@ -55,6 +76,8 @@ export const useUserStore = defineStore('user', () => {
     isLoggedIn,
     registerUser,
     loginUser,
+    wechatLoginUser,
+    bindPhone,
     loadUser,
     logout
   }

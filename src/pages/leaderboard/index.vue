@@ -1,11 +1,14 @@
 <template>
-  <view class="leaderboard-container">
-    <view class="header">
-      <text class="title">🏆 排行榜</text>
-      <text class="subtitle">本周排行榜</text>
-    </view>
+  <view class="page">
+    <text class="page-title">排行榜</text>
 
-    <view class="podium">
+    <view class="card podium-card">
+      <view class="card-head">
+        <text class="card-title">本周荣誉榜</text>
+        <text class="card-sub">🏆 前三名</text>
+      </view>
+
+      <view class="podium">
       <view class="podium-item second">
         <view class="podium-avatar">🥈</view>
         <text class="podium-name">{{ leaderboard[1]?.nickname || '---' }}</text>
@@ -36,9 +39,10 @@
         </view>
         <view class="podium-stand" style="height: 60rpx;">3</view>
       </view>
+      </view>
     </view>
 
-    <view class="list-section">
+    <view class="card list-card">
       <view class="list-header">
         <text class="list-title">完整榜单</text>
         <text class="list-count">共 {{ leaderboard.length }} 人</text>
@@ -78,8 +82,7 @@
       </view>
     </view>
 
-    <view class="my-rank">
-      <view class="my-rank-card">
+    <view class="card my-rank-card">
         <view class="my-rank-header">
           <text class="my-rank-title">我的排名</text>
           <view class="my-position" v-if="myRank">
@@ -108,7 +111,6 @@
         <button class="btn btn-primary btn-block" @click="goToFocus">
           开始专注提升排名
         </button>
-      </view>
     </view>
   </view>
 </template>
@@ -180,30 +182,46 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.leaderboard-container {
+.page {
   min-height: 100vh;
-  background: #f5f5f5;
-  padding-bottom: 140rpx;
+  padding: 28rpx 24rpx 140rpx;
+  box-sizing: border-box;
+  background: #f2f5ff;
 }
 
-.header {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  padding: 60rpx 40rpx 40rpx;
-  text-align: center;
-}
-
-.title {
+.page-title {
+  display: block;
   font-size: 40rpx;
-  font-weight: 700;
-  color: #fff;
-  display: block;
+  font-weight: 900;
+  color: #0f172a;
+  text-align: center;
+  margin: 10rpx 0 26rpx;
 }
 
-.subtitle {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.8);
-  margin-top: 8rpx;
-  display: block;
+.card {
+  background: #fff;
+  border-radius: 28rpx;
+  padding: 32rpx;
+  box-shadow: 0 18rpx 60rpx rgba(15, 23, 42, 0.08);
+  margin-bottom: 26rpx;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22rpx;
+}
+
+.card-title {
+  font-size: 32rpx;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.card-sub {
+  font-size: 24rpx;
+  color: #64748b;
 }
 
 .podium {
@@ -211,8 +229,6 @@ onMounted(() => {
   justify-content: center;
   align-items: flex-end;
   gap: 32rpx;
-  margin-top: -40rpx;
-  padding: 0 20rpx;
 }
 
 .podium-item {
@@ -244,12 +260,12 @@ onMounted(() => {
   width: 100rpx;
   height: 100rpx;
   border-radius: 50%;
-  background: #fff;
+  background: #f8fafc;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 48rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12rpx 40rpx rgba(15, 23, 42, 0.12);
 }
 
 .podium-name {
@@ -311,7 +327,7 @@ onMounted(() => {
 }
 
 .list-section {
-  margin: 40rpx 30rpx;
+  margin: 0;
 }
 
 .list-header {
@@ -333,22 +349,20 @@ onMounted(() => {
 }
 
 .list-content {
-  background: #fff;
+  background: transparent;
   border-radius: 24rpx;
-  padding: 8rpx 0;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  padding: 0;
+  box-shadow: none;
 }
 
 .list-item {
   display: flex;
   align-items: center;
-  padding: 24rpx 28rpx;
-  border-bottom: 2rpx solid #f3f4f6;
-  
-  &:last-child {
-    border-bottom: none;
-  }
-  
+  padding: 20rpx 18rpx;
+  border-radius: 18rpx;
+  background: #f8fafc;
+  margin-bottom: 12rpx;
+
   &.is-current {
     background: #eff6ff;
   }
@@ -444,15 +458,8 @@ onMounted(() => {
   color: #9ca3af;
 }
 
-.my-rank {
-  padding: 0 30rpx;
-}
-
 .my-rank-card {
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  border-radius: 24rpx;
-  padding: 32rpx;
-  box-shadow: 0 8rpx 32rpx rgba(59, 130, 246, 0.3);
+  background: #111827;
 }
 
 .my-rank-header {

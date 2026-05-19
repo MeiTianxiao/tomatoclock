@@ -41,7 +41,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         const data = await api_leaderboard.getLeaderboard(20);
         leaderboard.value = data;
       } catch (error) {
-        common_vendor.index.__f__("error", "at pages/leaderboard/index.vue:159", "加载排行榜失败:", error);
+        common_vendor.index.__f__("error", "at pages/leaderboard/index.vue:161", "加载排行榜失败:", error);
       } finally {
         loading.value = false;
       }
@@ -92,7 +92,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         m: common_vendor.t(dailyPoints.value),
         n: common_vendor.t(totalMinutes.value),
         o: common_vendor.t(sessions.value.length),
-        p: common_vendor.o(goToFocus, "a7")
+        p: common_vendor.o(goToFocus, "eb")
       });
     };
   }

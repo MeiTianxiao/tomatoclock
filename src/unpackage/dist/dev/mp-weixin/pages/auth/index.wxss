@@ -45,6 +45,45 @@
   font-size: 28rpx;
   color: #6b7280;
 }
+.wechat-login.data-v-3f748249 {
+  margin-bottom: 36rpx;
+}
+.wechat-btn.data-v-3f748249 {
+  width: 100%;
+  height: 96rpx;
+  border-radius: 24rpx;
+  border: none;
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(90deg, #06c755 0%, #22c55e 100%);
+  box-shadow: 0 16rpx 44rpx rgba(34, 197, 94, 0.35);
+}
+.wechat-phone.data-v-3f748249 {
+  margin-top: 18rpx;
+  display: flex;
+  gap: 16rpx;
+}
+.phone-btn.data-v-3f748249 {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 22rpx;
+  border: none;
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #fff;
+  background: #111827;
+}
+.skip-btn.data-v-3f748249 {
+  width: 220rpx;
+  height: 88rpx;
+  border-radius: 22rpx;
+  border: none;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #374151;
+  background: #f3f4f6;
+}
 .mode-tabs.data-v-3f748249 {
   display: flex;
   gap: 16rpx;

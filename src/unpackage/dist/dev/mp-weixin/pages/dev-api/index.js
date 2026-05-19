@@ -18,6 +18,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         return v;
       if (/^\d{1,3}(\.\d{1,3}){3}$/.test(v))
         return `http://${v}:3000/api`;
+      if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(v))
+        return `https://${v.replace(/\/+$/, "")}/api`;
       return "";
     }
     function buildHealthURL(baseURL) {
@@ -38,6 +40,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       common_vendor.index.request({
         url: buildHealthURL(baseURL),
         method: "GET",
+        timeout: 9e4,
         success: (res) => {
           common_vendor.index.hideLoading();
           if ((res == null ? void 0 : res.statusCode) === 200) {
@@ -79,14 +82,14 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     }
     return (_ctx, _cache) => {
       return {
-        a: common_vendor.o(save, "b0"),
+        a: common_vendor.o(save, "da"),
         b: value.value,
-        c: common_vendor.o(($event) => value.value = $event.detail.value, "d4"),
-        d: common_vendor.o(useLocalhost, "26"),
+        c: common_vendor.o(($event) => value.value = $event.detail.value, "3a"),
+        d: common_vendor.o(useLocalhost, "88"),
         e: !canSave.value,
-        f: common_vendor.o(test, "da"),
+        f: common_vendor.o(test, "5a"),
         g: !canSave.value,
-        h: common_vendor.o(save, "89")
+        h: common_vendor.o(save, "77")
       };
     };
   }

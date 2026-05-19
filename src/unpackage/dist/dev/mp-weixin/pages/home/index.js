@@ -11,11 +11,13 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const selectedDuration = common_vendor.ref(25);
     const selectedMode = common_vendor.ref("strict");
     const selectedCategory = common_vendor.ref("study");
+    const isCustomDuration = common_vendor.ref(false);
     const durationOptions = [
-      { value: 15, label: "15分钟" },
-      { value: 25, label: "25分钟" },
-      { value: 45, label: "45分钟" },
-      { value: 60, label: "60分钟" }
+      { value: 15, desc: "实习生任务" },
+      { value: 30, desc: "科员任务" },
+      { value: 45, desc: "科长任务" },
+      { value: 60, desc: "处长任务" },
+      { value: 90, desc: "局长任务" }
     ];
     const user = common_vendor.computed(() => userStore.user);
     const dailyPoints = common_vendor.computed(() => timerStore.dailyPoints);
@@ -27,8 +29,14 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const totalMinutes = common_vendor.computed(() => {
       return sessions.value.reduce((sum, s) => sum + (s.completed ? s.duration : 0), 0);
     });
-    const todaySessions = common_vendor.computed(() => {
+    common_vendor.computed(() => {
       return sessions.value.slice(-3).reverse();
+    });
+    const pointsToNextRank = common_vendor.computed(() => {
+      var _a;
+      const target = ((_a = nextRank.value) == null ? void 0 : _a.points) ?? types_index.RANK_CONFIG.master.points;
+      const left = Math.max(0, target - dailyPoints.value);
+      return left;
     });
     const greeting = common_vendor.computed(() => {
       const hour = (/* @__PURE__ */ new Date()).getHours();
@@ -44,26 +52,27 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         return "晚上好";
       return "夜深了";
     });
-    const currentDate = common_vendor.computed(() => {
+    common_vendor.computed(() => {
       const now = /* @__PURE__ */ new Date();
       const weekDays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
       return `${now.getMonth() + 1}月${now.getDate()}日 ${weekDays[now.getDay()]}`;
     });
-    function getCategoryColor(category) {
-      return types_index.CATEGORY_CONFIG[category].color;
-    }
-    function getCategoryIcon(category) {
-      return types_index.CATEGORY_CONFIG[category].icon;
-    }
-    function getCategoryName(category) {
-      return types_index.CATEGORY_CONFIG[category].name;
-    }
     function startFocus() {
       timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value);
       common_vendor.index.navigateTo({ url: "/pages/timer/index" });
     }
-    function goToStats() {
-      common_vendor.index.switchTab({ url: "/pages/stats/index" });
+    function pickCustomDuration() {
+      const options = Array.from({ length: 12 }, (_, i) => (i + 1) * 10);
+      common_vendor.index.showActionSheet({
+        itemList: options.map((v) => `${v} 分钟`),
+        success: (res) => {
+          const picked = options[res.tapIndex];
+          if (picked) {
+            selectedDuration.value = picked;
+            isCustomDuration.value = true;
+          }
+        }
+      });
     }
     common_vendor.onMounted(() => {
       userStore.loadUser();
@@ -73,59 +82,59 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }
     });
     return (_ctx, _cache) => {
-      var _a, _b, _c;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
       return common_vendor.e({
-        a: common_vendor.t(greeting.value),
-        b: common_vendor.t((_a = user.value) == null ? void 0 : _a.nickname),
-        c: common_vendor.t(currentDate.value),
-        d: common_vendor.t(rankInfo.value.icon),
-        e: common_vendor.t(rankInfo.value.name),
-        f: rankInfo.value.color,
-        g: common_vendor.t(dailyPoints.value),
-        h: common_vendor.t(totalMinutes.value),
-        i: common_vendor.t(sessions.value.length),
-        j: common_vendor.t(((_b = nextRank.value) == null ? void 0 : _b.name) || "已满级"),
-        k: progressToNextRank.value + "%",
-        l: rankInfo.value.color,
-        m: common_vendor.t(dailyPoints.value),
-        n: common_vendor.t(((_c = nextRank.value) == null ? void 0 : _c.points) || common_vendor.unref(types_index.RANK_CONFIG).master.points),
-        o: common_vendor.f(durationOptions, (duration, k0, i0) => {
+        a: (_a = user.value) == null ? void 0 : _a.avatar_url
+      }, ((_b = user.value) == null ? void 0 : _b.avatar_url) ? {
+        b: user.value.avatar_url
+      } : {
+        c: common_vendor.t(((_d = (_c = user.value) == null ? void 0 : _c.nickname) == null ? void 0 : _d.slice(0, 1)) || "你")
+      }, {
+        d: common_vendor.t(greeting.value),
+        e: common_vendor.t(((_e = user.value) == null ? void 0 : _e.nickname) || "同学"),
+        f: common_vendor.t((totalMinutes.value / 60).toFixed(1)),
+        g: common_vendor.t(((_f = nextRank.value) == null ? void 0 : _f.name) || "已满级"),
+        h: common_vendor.t(pointsToNextRank.value),
+        i: (_g = user.value) == null ? void 0 : _g.avatar_url
+      }, ((_h = user.value) == null ? void 0 : _h.avatar_url) ? {
+        j: user.value.avatar_url
+      } : {
+        k: common_vendor.t(((_j = (_i = user.value) == null ? void 0 : _i.nickname) == null ? void 0 : _j.slice(0, 1)) || "你")
+      }, {
+        l: common_vendor.t(rankInfo.value.name),
+        m: rankInfo.value.color,
+        n: common_vendor.t(dailyPoints.value),
+        o: common_vendor.t(((_k = nextRank.value) == null ? void 0 : _k.name) || "已满级"),
+        p: common_vendor.t(pointsToNextRank.value),
+        q: progressToNextRank.value + "%",
+        r: rankInfo.value.color,
+        s: common_vendor.f(durationOptions, (duration, k0, i0) => {
           return {
             a: common_vendor.t(duration.value),
-            b: duration.value,
-            c: selectedDuration.value === duration.value ? 1 : "",
-            d: common_vendor.o(($event) => selectedDuration.value = duration.value, duration.value)
+            b: common_vendor.t(duration.desc),
+            c: duration.value,
+            d: selectedDuration.value === duration.value ? 1 : "",
+            e: common_vendor.o(($event) => selectedDuration.value = duration.value, duration.value)
           };
         }),
-        p: selectedMode.value === "strict" ? 1 : "",
-        q: common_vendor.o(($event) => selectedMode.value = "strict", "97"),
-        r: selectedMode.value === "gentle" ? 1 : "",
-        s: common_vendor.o(($event) => selectedMode.value = "gentle", "7b"),
-        t: common_vendor.f(common_vendor.unref(types_index.CATEGORY_CONFIG), (config, key, i0) => {
+        t: isCustomDuration.value ? 1 : "",
+        v: common_vendor.o(pickCustomDuration, "54"),
+        w: common_vendor.f(common_vendor.unref(types_index.CATEGORY_CONFIG), (config, key, i0) => {
           return {
             a: common_vendor.t(config.icon),
-            b: common_vendor.t(config.name),
-            c: key,
-            d: selectedCategory.value === key ? 1 : "",
-            e: config.color,
+            b: config.color,
+            c: common_vendor.t(config.name),
+            d: key,
+            e: selectedCategory.value === key ? 1 : "",
             f: common_vendor.o(($event) => selectedCategory.value = key, key)
           };
         }),
-        v: common_vendor.o(startFocus, "bb"),
-        w: common_vendor.o(goToStats, "4e"),
-        x: todaySessions.value.length > 0
-      }, todaySessions.value.length > 0 ? {
-        y: common_vendor.f(todaySessions.value, (session, k0, i0) => {
-          return {
-            a: common_vendor.t(getCategoryIcon(session.category)),
-            b: getCategoryColor(session.category),
-            c: common_vendor.t(getCategoryName(session.category)),
-            d: common_vendor.t(session.duration),
-            e: common_vendor.t(session.points),
-            f: session.id
-          };
-        })
-      } : {});
+        x: selectedMode.value === "gentle" ? 1 : "",
+        y: common_vendor.o(($event) => selectedMode.value = "gentle", "69"),
+        z: selectedMode.value === "strict" ? 1 : "",
+        A: common_vendor.o(($event) => selectedMode.value = "strict", "ac"),
+        B: common_vendor.o(startFocus, "27")
+      });
     };
   }
 });

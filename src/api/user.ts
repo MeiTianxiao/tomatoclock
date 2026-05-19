@@ -11,6 +11,16 @@ export async function login(nickname: string): Promise<{ user: User; token: stri
   return res.data
 }
 
+export async function wechatLogin(payload: { code: string; nickname?: string; avatar_url?: string }): Promise<{ user: User; token: string }> {
+  const res = await post('/wechat/login', payload)
+  return res.data
+}
+
+export async function bindWeChatPhone(code: string): Promise<{ phone_number: string; user?: User }> {
+  const res = await post('/wechat/phone', { code })
+  return res.data
+}
+
 export async function getUserInfo(): Promise<User> {
   const res = await get('/users/me')
   return res.data

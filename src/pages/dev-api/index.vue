@@ -2,14 +2,14 @@
   <view class="page">
     <view class="card">
       <text class="title">开发环境接口地址</text>
-      <text class="desc">真机调试时，接口需要指向电脑的局域网 IP（手机与电脑同一网络）。</text>
+      <text class="desc">可填局域网 IP（仅开发调试）或公网 HTTPS（推荐，真机更稳定）。</text>
 
       <view class="field">
         <text class="label">接口地址（URL 或 IP）</text>
         <input
           v-model="value"
           class="input"
-          placeholder="例如 192.168.49.5 或 http://192.168.49.5:3000/api"
+          placeholder="例如 192.168.49.5 或 https://xxx.onrender.com/api"
           placeholder-class="placeholder"
           confirm-type="done"
           @confirm="save"
@@ -45,6 +45,7 @@ function normalize(input: string) {
   if (!v) return ''
   if (/^https?:\/\//.test(v)) return v
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(v)) return `http://${v}:3000/api`
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(v)) return `https://${v.replace(/\/+$/, '')}/api`
   return ''
 }
 
@@ -69,6 +70,7 @@ function test() {
   uni.request({
     url: buildHealthURL(baseURL),
     method: 'GET',
+    timeout: 90000,
     success: (res) => {
       uni.hideLoading()
       if ((res as any)?.statusCode === 200) {

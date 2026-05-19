@@ -9,6 +9,18 @@
         <text class="subtitle">专注换晋升，开启您的职场之旅</text>
       </view>
 
+      <view v-if="isWeixinMp" class="wechat-login">
+        <button class="wechat-btn" :disabled="wechatLoading" @click="wechatOneTap">
+          {{ wechatLoading ? '微信登录中...' : '微信一键登录' }}
+        </button>
+        <view v-if="needsPhoneBind" class="wechat-phone">
+          <button class="phone-btn" open-type="getPhoneNumber" @getphonenumber="onGetPhoneNumber">
+            授权手机号并继续
+          </button>
+          <button class="skip-btn" @click="goHome">暂不绑定，直接进入</button>
+        </view>
+      </view>
+
       <view class="mode-tabs">
         <button
           class="tab-btn"
@@ -84,9 +96,96 @@ const userStore = useUserStore()
 const nickname = ref('')
 const loading = ref(false)
 const mode = ref<'login' | 'register'>('login')
+const wechatLoading = ref(false)
+const needsPhoneBind = ref(false)
+
+const wxAny = (globalThis as any).wx
+const isWeixinMp = !!wxAny && typeof wxAny.login === 'function'
 
 function goDevConfig() {
   uni.navigateTo({ url: '/pages/dev-api/index' })
+}
+
+function goHome() {
+  setTimeout(() => {
+    uni.switchTab({
+      url: '/pages/home/index',
+      fail: () => {
+        uni.reLaunch({ url: '/pages/home/index' })
+      }
+    })
+  }, 200)
+}
+
+async function wechatOneTap() {
+  if (!isWeixinMp) return
+  wechatLoading.value = true
+  try {
+    const profile = await new Promise<any>((resolve, reject) => {
+      if (typeof (uni as any).getUserProfile !== 'function') {
+        resolve(null)
+        return
+      }
+      ;(uni as any).getUserProfile({
+        desc: '用于完善头像与昵称',
+        success: (res: any) => resolve(res),
+        fail: () => resolve(null)
+      })
+    })
+
+    const code = await new Promise<string>((resolve, reject) => {
+      const wxLogin = (globalThis as any).wx?.login
+      if (typeof wxLogin === 'function') {
+        wxLogin({
+          timeout: 10000,
+          success: (res: any) => resolve(res?.code || ''),
+          fail: (err: any) => reject(err)
+        })
+        return
+      }
+
+      uni.login({
+        provider: 'weixin',
+        success: (res) => resolve((res as any)?.code || ''),
+        fail: (err) => reject(err)
+      })
+    })
+
+    if (!code) {
+      throw new Error('未获取到微信登录 code，请确认在微信小程序环境并已配置正确的接口地址')
+    }
+
+    const nickName = profile?.userInfo?.nickName
+    const avatarUrl = profile?.userInfo?.avatarUrl
+    await userStore.wechatLoginUser({
+      code,
+      nickname: typeof nickName === 'string' ? nickName : undefined,
+      avatar_url: typeof avatarUrl === 'string' ? avatarUrl : undefined
+    })
+
+    needsPhoneBind.value = true
+    uni.showToast({ title: '微信登录成功', icon: 'success' })
+  } catch (error: any) {
+    uni.showToast({ title: error?.message || '微信登录失败', icon: 'none' })
+  } finally {
+    wechatLoading.value = false
+  }
+}
+
+async function onGetPhoneNumber(e: any) {
+  const code = e?.detail?.code
+  if (!code) {
+    uni.showToast({ title: '未获取到手机号授权', icon: 'none' })
+    return
+  }
+  try {
+    await userStore.bindPhone(code)
+    needsPhoneBind.value = false
+    uni.showToast({ title: '手机号绑定成功', icon: 'success' })
+    goHome()
+  } catch (error: any) {
+    uni.showToast({ title: error?.message || '手机号绑定失败', icon: 'none' })
+  }
 }
 
 async function submit() {
@@ -104,14 +203,7 @@ async function submit() {
       await userStore.loginUser(nickname.value.trim())
       uni.showToast({ title: '登录成功', icon: 'success' })
     }
-    setTimeout(() => {
-      uni.switchTab({
-        url: '/pages/home/index',
-        fail: () => {
-          uni.reLaunch({ url: '/pages/home/index' })
-        }
-      })
-    }, 300)
+    goHome()
   } catch (error: any) {
     uni.showToast({ title: error?.message || '操作失败，请重试', icon: 'none' })
   } finally {
@@ -173,6 +265,50 @@ async function submit() {
   display: block;
   font-size: 28rpx;
   color: #6b7280;
+}
+
+.wechat-login {
+  margin-bottom: 36rpx;
+}
+
+.wechat-btn {
+  width: 100%;
+  height: 96rpx;
+  border-radius: 24rpx;
+  border: none;
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(90deg, #06c755 0%, #22c55e 100%);
+  box-shadow: 0 16rpx 44rpx rgba(34, 197, 94, 0.35);
+}
+
+.wechat-phone {
+  margin-top: 18rpx;
+  display: flex;
+  gap: 16rpx;
+}
+
+.phone-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 22rpx;
+  border: none;
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #fff;
+  background: #111827;
+}
+
+.skip-btn {
+  width: 220rpx;
+  height: 88rpx;
+  border-radius: 22rpx;
+  border: none;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #374151;
+  background: #f3f4f6;
 }
 
 .mode-tabs {

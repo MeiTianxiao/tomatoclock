@@ -1,4 +1,5 @@
 let hasShownBaseURLTip = false
+let hasRetriedWakeup = false
 
 function getBaseURLMeta() {
   const wxAny = (globalThis as any).wx
@@ -65,17 +66,21 @@ export async function request<T = any>(
       return
     }
 
+    const fullURL = `${baseURL}${url}`
+
     uni.request({
-      url: `${baseURL}${url}`,
+      url: fullURL,
       method,
       data,
       header: {
         'Content-Type': 'application/json',
         ...headers
       },
+      timeout: 90000,
       success: (res) => {
         const result = res.data as ResponseData<T>
         if (result.code === 200) {
+          hasRetriedWakeup = false
           resolve(result)
         } else if (result.code === 401) {
           uni.removeStorageSync('token')
@@ -88,6 +93,44 @@ export async function request<T = any>(
         }
       },
       fail: (err) => {
+        const msg = (err as any)?.errMsg || ''
+        const isTimeout = msg.includes('timeout')
+        const shouldRetry = isTimeout && !hasRetriedWakeup
+        if (shouldRetry) {
+          hasRetriedWakeup = true
+          uni.showToast({ title: '服务唤醒中，正在重试…', icon: 'none' })
+          uni.request({
+            url: fullURL,
+            method,
+            data,
+            header: {
+              'Content-Type': 'application/json',
+              ...headers
+            },
+            timeout: 90000,
+            success: (res) => {
+              const result = res.data as ResponseData<T>
+              if (result.code === 200) {
+                hasRetriedWakeup = false
+                resolve(result)
+              } else if (result.code === 401) {
+                uni.removeStorageSync('token')
+                uni.removeStorageSync('user')
+                uni.navigateTo({ url: '/pages/auth/index' })
+                reject(new Error('登录失效'))
+              } else {
+                uni.showToast({ title: result.message, icon: 'none' })
+                reject(new Error(result.message))
+              }
+            },
+            fail: (err2) => {
+              uni.showToast({ title: '网络请求失败', icon: 'none' })
+              reject(err2)
+            }
+          })
+          return
+        }
+
         uni.showToast({ title: '网络请求失败', icon: 'none' })
         reject(err)
       }
