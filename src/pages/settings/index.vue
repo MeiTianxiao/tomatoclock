@@ -6,12 +6,14 @@
 
     <view class="user-card">
       <view class="user-avatar" :style="{ background: rankColor }">
-        <open-data v-if="isWeixinMp" class="user-avatar-img" type="userAvatarUrl" />
+        <image v-if="user?.avatar_url" class="user-avatar-img" :src="user.avatar_url" mode="aspectFill" />
+        <open-data v-else-if="isWeixinMp" class="user-avatar-img" type="userAvatarUrl" />
         <text v-else>{{ rankIcon }}</text>
       </view>
       <view class="user-info">
-        <open-data v-if="isWeixinMp" class="user-name" type="userNickName" />
-        <text v-else class="user-name">{{ user?.nickname }}</text>
+        <text v-if="user?.nickname" class="user-name">{{ user.nickname }}</text>
+        <open-data v-else-if="isWeixinMp" class="user-name" type="userNickName" />
+        <text v-else class="user-name">微信用户</text>
         <text class="user-rank">{{ rankName }}</text>
       </view>
       <button class="edit-btn" @click="editProfile">

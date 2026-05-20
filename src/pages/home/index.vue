@@ -3,15 +3,16 @@
     <view class="card greeting-card">
       <view class="greeting-row">
         <view class="avatar">
-          <open-data v-if="isWeixinMp" class="avatar-img" type="userAvatarUrl" />
-          <image v-else-if="user?.avatar_url" class="avatar-img" :src="user.avatar_url" mode="aspectFill" />
+          <image v-if="user?.avatar_url" class="avatar-img" :src="user.avatar_url" mode="aspectFill" />
+          <open-data v-else-if="isWeixinMp" class="avatar-img" type="userAvatarUrl" />
           <view v-else class="avatar-fallback">{{ user?.nickname?.slice(0, 1) || '你' }}</view>
         </view>
         <view class="greeting-texts">
           <view class="greeting-title-row">
             <text class="greeting-title">{{ greeting }}，</text>
-            <open-data v-if="isWeixinMp" class="greeting-title" type="userNickName" />
-            <text v-else class="greeting-title">{{ user?.nickname || '同学' }}</text>
+            <text v-if="user?.nickname" class="greeting-title">{{ user.nickname }}</text>
+            <open-data v-else-if="isWeixinMp" class="greeting-title" type="userNickName" />
+            <text v-else class="greeting-title">同学</text>
             <text class="greeting-title">！</text>
           </view>
           <text class="greeting-subtitle">下午好！保持专注，冲刺今日目标！</text>
@@ -24,8 +25,8 @@
     <view class="card points-card">
       <view class="points-avatar">
         <view class="avatar lg">
-          <open-data v-if="isWeixinMp" class="avatar-img" type="userAvatarUrl" />
-          <image v-else-if="user?.avatar_url" class="avatar-img" :src="user.avatar_url" mode="aspectFill" />
+          <image v-if="user?.avatar_url" class="avatar-img" :src="user.avatar_url" mode="aspectFill" />
+          <open-data v-else-if="isWeixinMp" class="avatar-img" type="userAvatarUrl" />
           <view v-else class="avatar-fallback">{{ user?.nickname?.slice(0, 1) || '你' }}</view>
         </view>
         <view class="rank-pill" :style="{ background: rankInfo.color }">{{ rankInfo.name }}</view>

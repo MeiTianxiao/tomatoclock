@@ -114,13 +114,14 @@
         <view class="my-rank-header">
           <view class="my-user">
             <view class="my-avatar">
-              <open-data v-if="isWeixinMp" class="my-avatar-img" type="userAvatarUrl" />
-              <image v-else-if="userStore.user?.avatar_url" class="my-avatar-img" :src="userStore.user.avatar_url" mode="aspectFill" />
+              <image v-if="userStore.user?.avatar_url" class="my-avatar-img" :src="userStore.user.avatar_url" mode="aspectFill" />
+              <open-data v-else-if="isWeixinMp" class="my-avatar-img" type="userAvatarUrl" />
               <view v-else class="my-avatar-fallback">{{ userStore.user?.nickname?.slice(0, 1) || '你' }}</view>
             </view>
             <view class="my-user-info">
-              <open-data v-if="isWeixinMp" class="my-user-name" type="userNickName" />
-              <text v-else class="my-user-name">{{ userStore.user?.nickname || '微信用户' }}</text>
+              <text v-if="userStore.user?.nickname" class="my-user-name">{{ userStore.user.nickname }}</text>
+              <open-data v-else-if="isWeixinMp" class="my-user-name" type="userNickName" />
+              <text v-else class="my-user-name">微信用户</text>
               <text class="my-user-sub">我的排名</text>
             </view>
           </view>

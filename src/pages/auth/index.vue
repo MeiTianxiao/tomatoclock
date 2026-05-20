@@ -70,15 +70,27 @@ async function wechatOneTap() {
   wechatLoading.value = true
   try {
     const profile = await new Promise<any>((resolve, reject) => {
-      if (typeof (uni as any).getUserProfile !== 'function') {
-        resolve(null)
+      const wxProfile = (globalThis as any).wx?.getUserProfile
+      if (typeof wxProfile === 'function') {
+        wxProfile({
+          desc: '用于完善头像与昵称',
+          success: (res: any) => resolve(res),
+          fail: () => resolve(null)
+        })
         return
       }
-      ;(uni as any).getUserProfile({
-        desc: '用于完善头像与昵称',
-        success: (res: any) => resolve(res),
-        fail: () => resolve(null)
-      })
+
+      const uniProfile = (uni as any).getUserProfile
+      if (typeof uniProfile === 'function') {
+        uniProfile({
+          desc: '用于完善头像与昵称',
+          success: (res: any) => resolve(res),
+          fail: () => resolve(null)
+        })
+        return
+      }
+
+      resolve(null)
     })
 
     const code = await new Promise<string>((resolve, reject) => {
