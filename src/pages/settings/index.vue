@@ -22,6 +22,17 @@
     </view>
 
     <view class="settings-section">
+      <view class="section-title">好友</view>
+      <view class="setting-item" @click="goFriends">
+        <view class="setting-left">
+          <text class="setting-icon">👥</text>
+          <text class="setting-label">好友管理</text>
+        </view>
+        <text class="setting-arrow">›</text>
+      </view>
+    </view>
+
+    <view class="settings-section">
       <view class="section-title">通用设置</view>
       
       <view class="setting-item">
@@ -219,6 +230,10 @@ function loadSettings() {
 
 function editProfile() {
   uni.showToast({ title: '功能开发中', icon: 'none' })
+}
+
+function goFriends() {
+  uni.navigateTo({ url: '/pages/friends/index' })
 }
 
 function showGoalSettings() {

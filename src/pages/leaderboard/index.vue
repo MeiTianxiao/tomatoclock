@@ -3,8 +3,8 @@
     <text class="page-title">排行榜</text>
 
     <view class="board-tabs">
-      <view class="board-tab" :class="{ active: activeBoard === 'all' }" @click="activeBoard = 'all'">全站榜</view>
-      <view class="board-tab" :class="{ active: activeBoard === 'friend' }" @click="activeBoard = 'friend'">好友榜</view>
+      <view class="board-tab" :class="{ active: activeBoard === 'all' }" @click="switchBoard('all')">全站榜</view>
+      <view class="board-tab" :class="{ active: activeBoard === 'friend' }" @click="switchBoard('friend')">好友榜</view>
     </view>
 
     <view v-if="activeBoard === 'all'">
@@ -102,11 +102,41 @@
     <view v-else class="card friend-card">
       <view class="friend-head">
         <text class="friend-title">好友榜</text>
-        <text class="friend-sub">仅展示使用过本小程序的微信好友</text>
+        <text class="friend-sub">互相同意后才会显示</text>
       </view>
-      <view class="friend-body">
-        <text class="friend-tip">微信小程序无法直接读取通讯录或好友列表。要做“好友榜”，需要接入开放数据域能力（好友云存储）或在应用内做好友关系（邀请码/互相关注）。</text>
-        <button class="btn btn-primary btn-block" @click="activeBoard = 'all'">先看全站榜</button>
+
+      <view v-if="friendLoading" class="loading-more">
+        <text class="loading-text">加载中...</text>
+      </view>
+
+      <view v-else-if="friendLeaderboard.length <= 1" class="friend-body">
+        <text class="friend-tip">暂无好友。到「设置 → 好友管理」发送邀请码并互相同意后，这里就会出现好友排行榜。</text>
+        <button class="btn btn-primary btn-block" @click="goFriends">去好友管理</button>
+      </view>
+
+      <view v-else class="list-content">
+        <view
+          v-for="(item, index) in friendLeaderboard"
+          :key="item.id"
+          class="list-item"
+          :class="{ 'is-current': item.id === currentUserId }"
+        >
+          <view class="item-position">
+            <text class="position-number">{{ index + 1 }}</text>
+          </view>
+          <view class="item-avatar" :style="{ background: getRankColor(item.current_rank) }">
+            <image v-if="item.avatar_url" class="item-avatar-img" :src="item.avatar_url" mode="aspectFill" />
+            <text v-else class="item-avatar-fallback">{{ getRankIcon(item.current_rank) }}</text>
+          </view>
+          <view class="item-info">
+            <text class="item-name">{{ item.nickname }}</text>
+            <text class="item-rank">{{ getRankName(item.current_rank) }}</text>
+          </view>
+          <view class="item-stats">
+            <text class="item-points">{{ item.total_points }}分</text>
+            <text class="item-minutes">{{ item.total_minutes }}分钟</text>
+          </view>
+        </view>
       </view>
     </view>
 
@@ -159,7 +189,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useTimerStore } from '@/stores/timer'
-import { getLeaderboard, type LeaderboardItem } from '@/api/leaderboard'
+import { getLeaderboard, getFriendLeaderboard, type LeaderboardItem } from '@/api/leaderboard'
 import { RANK_CONFIG } from '@/types'
 
 const userStore = useUserStore()
@@ -168,6 +198,8 @@ const timerStore = useTimerStore()
 const leaderboard = ref<LeaderboardItem[]>([])
 const loading = ref(false)
 const activeBoard = ref<'all' | 'friend'>('all')
+const friendLeaderboard = ref<LeaderboardItem[]>([])
+const friendLoading = ref(false)
 
 const wxAny = (globalThis as any).wx
 const isWeixinMp = !!wxAny && typeof wxAny.login === 'function'
@@ -180,8 +212,10 @@ const totalMinutes = computed(() => {
   return sessions.value.reduce((sum, s) => sum + (s.completed ? s.duration : 0), 0)
 })
 
+const boardList = computed(() => (activeBoard.value === 'all' ? leaderboard.value : friendLeaderboard.value))
+
 const myRank = computed(() => {
-  return leaderboard.value.find(item => item.id === currentUserId.value)
+  return boardList.value.find(item => item.id === currentUserId.value)
 })
 
 function getRankColor(rank: string) {
@@ -202,14 +236,37 @@ async function loadLeaderboard() {
     const data = await getLeaderboard(20)
     leaderboard.value = data
   } catch (error) {
-    console.error('加载排行榜失败:', error)
+    uni.showToast({ title: '加载排行榜失败', icon: 'none' })
   } finally {
     loading.value = false
   }
 }
 
+async function loadFriendBoard() {
+  friendLoading.value = true
+  try {
+    const data = await getFriendLeaderboard(50)
+    friendLeaderboard.value = data
+  } catch (error) {
+    uni.showToast({ title: '加载好友榜失败', icon: 'none' })
+  } finally {
+    friendLoading.value = false
+  }
+}
+
+function switchBoard(type: 'all' | 'friend') {
+  activeBoard.value = type
+  if (type === 'friend' && !friendLeaderboard.value.length) {
+    loadFriendBoard()
+  }
+}
+
 function goToFocus() {
   uni.switchTab({ url: '/pages/home/index' })
+}
+
+function goFriends() {
+  uni.navigateTo({ url: '/pages/friends/index' })
 }
 
 onMounted(() => {

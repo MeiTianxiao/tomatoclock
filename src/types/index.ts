@@ -3,6 +3,7 @@ export interface User {
   nickname: string
   avatar_url?: string
   wechat_openid?: string
+  invite_code?: string
   phone_number?: string
   total_focus_minutes: number
   total_sessions: number

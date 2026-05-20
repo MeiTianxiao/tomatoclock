@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   nickname VARCHAR(50) NOT NULL,
   avatar_url TEXT,
   wechat_openid TEXT UNIQUE,
+  invite_code TEXT,
   phone_number TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   last_login TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -13,6 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
   total_sessions INTEGER DEFAULT 0,
   CONSTRAINT nickname_length CHECK (char_length(nickname) >= 2)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_invite_code ON users(invite_code);
 
 -- 周统计表（每周一自动创建新记录）
 CREATE TABLE IF NOT EXISTS weekly_stats (
@@ -54,6 +57,32 @@ CREATE INDEX IF NOT EXISTS idx_weekly_stats_user_week ON weekly_stats(user_id, w
 CREATE INDEX IF NOT EXISTS idx_focus_sessions_user ON focus_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_focus_sessions_week ON focus_sessions(week_stats_id);
 CREATE INDEX IF NOT EXISTS idx_weekly_stats_week_start ON weekly_stats(week_start);
+
+CREATE TABLE IF NOT EXISTS friend_invites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  inviter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  invitee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  responded_at TIMESTAMP WITH TIME ZONE,
+  CONSTRAINT friend_invites_no_self CHECK (inviter_id <> invitee_id),
+  CONSTRAINT friend_invites_status CHECK (status IN ('pending', 'accepted', 'rejected', 'canceled'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_friend_invites_invitee ON friend_invites(invitee_id, status, created_at);
+CREATE INDEX IF NOT EXISTS idx_friend_invites_inviter ON friend_invites(inviter_id, status, created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_friend_invites_unique_pending ON friend_invites(inviter_id, invitee_id) WHERE status = 'pending';
+
+CREATE TABLE IF NOT EXISTS friends (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  friend_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT friends_no_self CHECK (user_id <> friend_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_friends_unique_pair ON friends(user_id, friend_id);
+CREATE INDEX IF NOT EXISTS idx_friends_user ON friends(user_id);
 
 -- 创建视图：本周排行榜
 CREATE OR REPLACE VIEW current_week_leaderboard AS

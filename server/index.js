@@ -81,6 +81,8 @@ app.get('/api/routes', (req, res) => {
 let users = [];
 let sessions = [];
 let weeklyStats = [];
+let friendInvites = [];
+let friends = [];
 
 let wechatAccessToken = { token: '', expiresAt: 0 };
 
@@ -194,6 +196,29 @@ async function pickUniqueNickname(preferred) {
   return `${raw}${Date.now().toString().slice(-4)}`;
 }
 
+function makeInviteCode() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+async function generateUniqueInviteCode() {
+  for (let i = 0; i < 20; i++) {
+    const code = makeInviteCode();
+    if (supabase) {
+      const { data, error } = await supabase.from('users').select('id').eq('invite_code', code).maybeSingle();
+      if (!error && !data) return code;
+      continue;
+    }
+    if (!users.some(u => u.invite_code === code)) return code;
+  }
+  return `${makeInviteCode()}${Math.random().toString(36).slice(2, 4).toUpperCase()}`;
+}
+
+function getToken(req) {
+  const raw = req.headers.authorization || '';
+  const parts = raw.split(' ');
+  return parts.length === 2 ? parts[1] : '';
+}
+
 app.post('/api/wechat/login', async (req, res) => {
   const { code, nickname, avatar_url } = req.body || {};
   if (!code) {
@@ -224,6 +249,7 @@ app.post('/api/wechat/login', async (req, res) => {
         const updatePayload = { last_login: now };
         if (typeof avatar_url === 'string' && avatar_url) updatePayload.avatar_url = avatar_url;
         if (typeof nickname === 'string' && nickname.length >= 2) updatePayload.nickname = nickname;
+        if (!existed.invite_code) updatePayload.invite_code = await generateUniqueInviteCode();
 
         const { data: updated, error: updateError } = await supabase
           .from('users')
@@ -245,6 +271,7 @@ app.post('/api/wechat/login', async (req, res) => {
       }
 
       const finalNickname = typeof nickname === 'string' && nickname.length >= 2 ? nickname : '微信用户';
+      const inviteCode = await generateUniqueInviteCode();
 
       const { data: newUser, error: insertError } = await supabase
         .from('users')
@@ -252,6 +279,7 @@ app.post('/api/wechat/login', async (req, res) => {
           nickname: finalNickname,
           avatar_url: typeof avatar_url === 'string' ? avatar_url : null,
           wechat_openid: openid,
+          invite_code: inviteCode,
           phone_number: null,
           total_focus_minutes: 0,
           total_sessions: 0,
@@ -280,15 +308,18 @@ app.post('/api/wechat/login', async (req, res) => {
     existed.last_login = now;
     if (typeof avatar_url === 'string' && avatar_url) existed.avatar_url = avatar_url;
     if (typeof nickname === 'string' && nickname.length >= 2) existed.nickname = nickname;
+    if (!existed.invite_code) existed.invite_code = await generateUniqueInviteCode();
     return res.json({ code: 200, message: '登录成功', data: { user: existed, token: existed.id } });
   }
 
   const finalNickname = typeof nickname === 'string' && nickname.length >= 2 ? nickname : '微信用户';
+  const inviteCode = await generateUniqueInviteCode();
   const newUser = {
     id: uuidv4(),
     nickname: finalNickname,
     avatar_url: typeof avatar_url === 'string' ? avatar_url : null,
     wechat_openid: openid,
+    invite_code: inviteCode,
     phone_number: null,
     total_focus_minutes: 0,
     total_sessions: 0,
@@ -394,11 +425,13 @@ app.post('/api/users/register', async (req, res) => {
       }
 
       const now = new Date().toISOString();
+      const inviteCode = await generateUniqueInviteCode();
       const { data: newUser, error: insertError } = await supabase
         .from('users')
         .insert({
           nickname,
           avatar_url: null,
+          invite_code: inviteCode,
           total_focus_minutes: 0,
           total_sessions: 0,
           last_login: now
@@ -447,6 +480,7 @@ app.post('/api/users/register', async (req, res) => {
     id: uuidv4(),
     nickname,
     avatar_url: null,
+    invite_code: await generateUniqueInviteCode(),
     total_focus_minutes: 0,
     total_sessions: 0,
     created_at: new Date().toISOString(),
@@ -492,16 +526,22 @@ app.post('/api/users/login', async (req, res) => {
         return res.status(400).json({ code: 400, message: '用户不存在，请先注册' });
       }
 
-      const { error: updateError } = await supabase
+      const now = new Date().toISOString();
+      const updatePayload = { last_login: now };
+      if (!user.invite_code) updatePayload.invite_code = await generateUniqueInviteCode();
+
+      const { data: updated, error: updateError } = await supabase
         .from('users')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', user.id);
+        .update(updatePayload)
+        .eq('id', user.id)
+        .select('*')
+        .single();
 
       if (updateError) {
         return res.status(500).json({ code: 500, message: updateError.message });
       }
 
-      return res.json({ code: 200, message: '登录成功', data: { user, token: user.id } });
+      return res.json({ code: 200, message: '登录成功', data: { user: updated, token: updated.id } });
     } catch {
       return res.status(500).json({ code: 500, message: '服务异常' });
     }
@@ -513,6 +553,7 @@ app.post('/api/users/login', async (req, res) => {
   }
   
   user.last_login = new Date().toISOString();
+  if (!user.invite_code) user.invite_code = await generateUniqueInviteCode();
   const index = users.findIndex(u => u.id === user.id);
   if (index !== -1) {
     users[index] = user;
@@ -548,6 +589,345 @@ app.get('/api/users/me', async (req, res) => {
   }
   
   res.json({ code: 200, message: 'success', data: user });
+});
+
+app.post('/api/friends/invite', async (req, res) => {
+  const token = getToken(req);
+  const { invite_code } = req.body || {};
+  if (!token) {
+    return res.status(401).json({ code: 401, message: '未登录' });
+  }
+  if (!invite_code || typeof invite_code !== 'string') {
+    return res.status(400).json({ code: 400, message: '缺少邀请码' });
+  }
+
+  if (supabase) {
+    try {
+      const { data: invitee, error: inviteeError } = await supabase
+        .from('users')
+        .select('id,nickname,avatar_url,invite_code')
+        .eq('invite_code', invite_code.trim().toUpperCase())
+        .maybeSingle();
+
+      if (inviteeError) {
+        return res.status(500).json({ code: 500, message: inviteeError.message });
+      }
+      if (!invitee) {
+        return res.status(400).json({ code: 400, message: '邀请码无效' });
+      }
+      if (invitee.id === token) {
+        return res.status(400).json({ code: 400, message: '不能添加自己' });
+      }
+
+      const { data: existedFriend, error: friendError } = await supabase
+        .from('friends')
+        .select('id')
+        .eq('user_id', token)
+        .eq('friend_id', invitee.id)
+        .maybeSingle();
+      if (friendError) {
+        return res.status(500).json({ code: 500, message: friendError.message });
+      }
+      if (existedFriend) {
+        return res.status(400).json({ code: 400, message: '你们已经是好友了' });
+      }
+
+      const { data: forwardPending, error: forwardError } = await supabase
+        .from('friend_invites')
+        .select('id')
+        .eq('inviter_id', token)
+        .eq('invitee_id', invitee.id)
+        .eq('status', 'pending')
+        .maybeSingle();
+      if (forwardError) {
+        return res.status(500).json({ code: 500, message: forwardError.message });
+      }
+      if (forwardPending) {
+        return res.status(400).json({ code: 400, message: '已发送过好友申请，请等待对方同意' });
+      }
+
+      const { data: backwardPending, error: backwardError } = await supabase
+        .from('friend_invites')
+        .select('id')
+        .eq('inviter_id', invitee.id)
+        .eq('invitee_id', token)
+        .eq('status', 'pending')
+        .maybeSingle();
+      if (backwardError) {
+        return res.status(500).json({ code: 500, message: backwardError.message });
+      }
+      if (backwardPending) {
+        return res.status(400).json({ code: 400, message: '对方已向你发起申请，请到“收到的申请”里同意' });
+      }
+
+      const { data: created, error: createError } = await supabase
+        .from('friend_invites')
+        .insert({
+          inviter_id: token,
+          invitee_id: invitee.id,
+          status: 'pending'
+        })
+        .select('*')
+        .single();
+
+      if (createError) {
+        return res.status(500).json({ code: 500, message: createError.message });
+      }
+
+      return res.json({ code: 200, message: 'success', data: { invite: created, invitee } });
+    } catch {
+      return res.status(500).json({ code: 500, message: '服务异常' });
+    }
+  }
+
+  const invitee = users.find(u => (u.invite_code || '').toUpperCase() === invite_code.trim().toUpperCase());
+  if (!invitee) {
+    return res.status(400).json({ code: 400, message: '邀请码无效' });
+  }
+  if (invitee.id === token) {
+    return res.status(400).json({ code: 400, message: '不能添加自己' });
+  }
+  if (friends.some(f => f.user_id === token && f.friend_id === invitee.id)) {
+    return res.status(400).json({ code: 400, message: '你们已经是好友了' });
+  }
+  if (friendInvites.some(i => i.inviter_id === token && i.invitee_id === invitee.id && i.status === 'pending')) {
+    return res.status(400).json({ code: 400, message: '已发送过好友申请，请等待对方同意' });
+  }
+  if (friendInvites.some(i => i.inviter_id === invitee.id && i.invitee_id === token && i.status === 'pending')) {
+    return res.status(400).json({ code: 400, message: '对方已向你发起申请，请到“收到的申请”里同意' });
+  }
+
+  const now = new Date().toISOString();
+  const created = {
+    id: uuidv4(),
+    inviter_id: token,
+    invitee_id: invitee.id,
+    status: 'pending',
+    created_at: now,
+    responded_at: null
+  };
+  friendInvites.push(created);
+  return res.json({ code: 200, message: 'success', data: { invite: created, invitee } });
+});
+
+app.get('/api/friends/invites', async (req, res) => {
+  const token = getToken(req);
+  if (!token) {
+    return res.status(401).json({ code: 401, message: '未登录' });
+  }
+
+  if (supabase) {
+    try {
+      const { data: incoming, error: incomingError } = await supabase
+        .from('friend_invites')
+        .select('*')
+        .eq('invitee_id', token)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (incomingError) {
+        return res.status(500).json({ code: 500, message: incomingError.message });
+      }
+
+      const { data: outgoing, error: outgoingError } = await supabase
+        .from('friend_invites')
+        .select('*')
+        .eq('inviter_id', token)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (outgoingError) {
+        return res.status(500).json({ code: 500, message: outgoingError.message });
+      }
+
+      const inviterIds = Array.from(new Set((incoming || []).map(i => i.inviter_id)));
+      const inviteeIds = Array.from(new Set((outgoing || []).map(i => i.invitee_id)));
+
+      const { data: inviterUsers, error: inviterUsersError } = inviterIds.length
+        ? await supabase.from('users').select('id,nickname,avatar_url,invite_code').in('id', inviterIds)
+        : { data: [], error: null };
+      if (inviterUsersError) {
+        return res.status(500).json({ code: 500, message: inviterUsersError.message });
+      }
+
+      const { data: inviteeUsers, error: inviteeUsersError } = inviteeIds.length
+        ? await supabase.from('users').select('id,nickname,avatar_url,invite_code').in('id', inviteeIds)
+        : { data: [], error: null };
+      if (inviteeUsersError) {
+        return res.status(500).json({ code: 500, message: inviteeUsersError.message });
+      }
+
+      const inviterMap = new Map((inviterUsers || []).map(u => [u.id, u]));
+      const inviteeMap = new Map((inviteeUsers || []).map(u => [u.id, u]));
+
+      return res.json({
+        code: 200,
+        message: 'success',
+        data: {
+          incoming: (incoming || []).map(i => ({ ...i, inviter: inviterMap.get(i.inviter_id) || null })),
+          outgoing: (outgoing || []).map(i => ({ ...i, invitee: inviteeMap.get(i.invitee_id) || null }))
+        }
+      });
+    } catch {
+      return res.status(500).json({ code: 500, message: '服务异常' });
+    }
+  }
+
+  const incoming = friendInvites
+    .filter(i => i.invitee_id === token && i.status === 'pending')
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    .map(i => ({ ...i, inviter: users.find(u => u.id === i.inviter_id) || null }));
+  const outgoing = friendInvites
+    .filter(i => i.inviter_id === token && i.status === 'pending')
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    .map(i => ({ ...i, invitee: users.find(u => u.id === i.invitee_id) || null }));
+  return res.json({ code: 200, message: 'success', data: { incoming, outgoing } });
+});
+
+app.post('/api/friends/invites/:id/accept', async (req, res) => {
+  const token = getToken(req);
+  const { id } = req.params;
+  if (!token) {
+    return res.status(401).json({ code: 401, message: '未登录' });
+  }
+
+  const now = new Date().toISOString();
+
+  if (supabase) {
+    try {
+      const { data: invite, error: inviteError } = await supabase
+        .from('friend_invites')
+        .select('*')
+        .eq('id', id)
+        .eq('invitee_id', token)
+        .eq('status', 'pending')
+        .maybeSingle();
+      if (inviteError) {
+        return res.status(500).json({ code: 500, message: inviteError.message });
+      }
+      if (!invite) {
+        return res.status(400).json({ code: 400, message: '申请不存在或已处理' });
+      }
+
+      const { error: updateError } = await supabase
+        .from('friend_invites')
+        .update({ status: 'accepted', responded_at: now })
+        .eq('id', invite.id);
+      if (updateError) {
+        return res.status(500).json({ code: 500, message: updateError.message });
+      }
+
+      const { error: upsertError } = await supabase.from('friends').upsert(
+        [
+          { user_id: token, friend_id: invite.inviter_id },
+          { user_id: invite.inviter_id, friend_id: token }
+        ],
+        { onConflict: 'user_id,friend_id' }
+      );
+      if (upsertError) {
+        return res.status(500).json({ code: 500, message: upsertError.message });
+      }
+
+      return res.json({ code: 200, message: 'success', data: { ok: true } });
+    } catch {
+      return res.status(500).json({ code: 500, message: '服务异常' });
+    }
+  }
+
+  const invite = friendInvites.find(i => i.id === id && i.invitee_id === token && i.status === 'pending');
+  if (!invite) {
+    return res.status(400).json({ code: 400, message: '申请不存在或已处理' });
+  }
+  invite.status = 'accepted';
+  invite.responded_at = now;
+  friends.push({ id: uuidv4(), user_id: token, friend_id: invite.inviter_id, created_at: now });
+  friends.push({ id: uuidv4(), user_id: invite.inviter_id, friend_id: token, created_at: now });
+  return res.json({ code: 200, message: 'success', data: { ok: true } });
+});
+
+app.post('/api/friends/invites/:id/reject', async (req, res) => {
+  const token = getToken(req);
+  const { id } = req.params;
+  if (!token) {
+    return res.status(401).json({ code: 401, message: '未登录' });
+  }
+
+  const now = new Date().toISOString();
+
+  if (supabase) {
+    try {
+      const { data: invite, error: inviteError } = await supabase
+        .from('friend_invites')
+        .select('id')
+        .eq('id', id)
+        .eq('invitee_id', token)
+        .eq('status', 'pending')
+        .maybeSingle();
+      if (inviteError) {
+        return res.status(500).json({ code: 500, message: inviteError.message });
+      }
+      if (!invite) {
+        return res.status(400).json({ code: 400, message: '申请不存在或已处理' });
+      }
+
+      const { error: updateError } = await supabase
+        .from('friend_invites')
+        .update({ status: 'rejected', responded_at: now })
+        .eq('id', id);
+      if (updateError) {
+        return res.status(500).json({ code: 500, message: updateError.message });
+      }
+
+      return res.json({ code: 200, message: 'success', data: { ok: true } });
+    } catch {
+      return res.status(500).json({ code: 500, message: '服务异常' });
+    }
+  }
+
+  const invite = friendInvites.find(i => i.id === id && i.invitee_id === token && i.status === 'pending');
+  if (!invite) {
+    return res.status(400).json({ code: 400, message: '申请不存在或已处理' });
+  }
+  invite.status = 'rejected';
+  invite.responded_at = now;
+  return res.json({ code: 200, message: 'success', data: { ok: true } });
+});
+
+app.get('/api/friends', async (req, res) => {
+  const token = getToken(req);
+  if (!token) {
+    return res.status(401).json({ code: 401, message: '未登录' });
+  }
+
+  if (supabase) {
+    try {
+      const { data: rels, error: relError } = await supabase.from('friends').select('friend_id').eq('user_id', token);
+      if (relError) {
+        return res.status(500).json({ code: 500, message: relError.message });
+      }
+
+      const ids = (rels || []).map(r => r.friend_id).filter(Boolean);
+      if (!ids.length) {
+        return res.json({ code: 200, message: 'success', data: [] });
+      }
+
+      const { data: list, error: listError } = await supabase
+        .from('users')
+        .select('id,nickname,avatar_url,invite_code')
+        .in('id', ids);
+      if (listError) {
+        return res.status(500).json({ code: 500, message: listError.message });
+      }
+
+      return res.json({ code: 200, message: 'success', data: list || [] });
+    } catch {
+      return res.status(500).json({ code: 500, message: '服务异常' });
+    }
+  }
+
+  const ids = friends.filter(f => f.user_id === token).map(f => f.friend_id);
+  const list = users.filter(u => ids.includes(u.id)).map(u => ({ id: u.id, nickname: u.nickname, avatar_url: u.avatar_url, invite_code: u.invite_code }));
+  return res.json({ code: 200, message: 'success', data: list });
 });
 
 app.get('/api/users/:userId/weekly-stats', async (req, res) => {
@@ -817,6 +1197,86 @@ app.get('/api/sessions/today', async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
   const userSessions = sessions.filter(s => s.user_id === token && s.completed_at.startsWith(today));
   res.json({ code: 200, message: 'success', data: userSessions });
+});
+
+app.get('/api/leaderboard/friends', async (req, res) => {
+  const token = getToken(req);
+  const limit = parseInt(req.query.limit) || 50;
+  const weekStart = getWeekStart();
+  if (!token) {
+    return res.status(401).json({ code: 401, message: '未登录' });
+  }
+
+  if (supabase) {
+    try {
+      const { data: rels, error: relError } = await supabase.from('friends').select('friend_id').eq('user_id', token);
+      if (relError) {
+        return res.status(500).json({ code: 500, message: relError.message });
+      }
+
+      const ids = Array.from(new Set([token, ...(rels || []).map(r => r.friend_id).filter(Boolean)]));
+      if (!ids.length) {
+        return res.json({ code: 200, message: 'success', data: [] });
+      }
+
+      const { data, error } = await supabase
+        .from('weekly_stats')
+        .select('user_id,current_rank,total_minutes,total_points,users!weekly_stats_user_id_fkey(id,nickname,avatar_url)')
+        .eq('week_start', weekStart)
+        .in('user_id', ids)
+        .order('total_points', { ascending: false })
+        .order('total_minutes', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        return res.status(500).json({ code: 500, message: error.message });
+      }
+
+      const leaderboard = (data || [])
+        .map((row, index) => ({
+          id: row.users?.id || row.user_id,
+          nickname: row.users?.nickname || '',
+          avatar_url: row.users?.avatar_url || null,
+          current_rank: row.current_rank,
+          total_minutes: row.total_minutes,
+          total_points: row.total_points,
+          position: index + 1
+        }))
+        .filter(e => e.nickname);
+
+      return res.json({ code: 200, message: 'success', data: leaderboard });
+    } catch {
+      return res.status(500).json({ code: 500, message: '服务异常' });
+    }
+  }
+
+  const ids = Array.from(
+    new Set([token, ...friends.filter(f => f.user_id === token).map(f => f.friend_id).filter(Boolean)])
+  );
+  const thisWeekStats = weeklyStats.filter(s => s.week_start === weekStart && ids.includes(s.user_id));
+  const leaderboard = thisWeekStats
+    .map(s => {
+      const user = users.find(u => u.id === s.user_id);
+      return user
+        ? {
+            id: user.id,
+            nickname: user.nickname,
+            avatar_url: user.avatar_url,
+            current_rank: s.current_rank,
+            total_minutes: s.total_minutes,
+            total_points: s.total_points
+          }
+        : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => (b.total_points - a.total_points) || (b.total_minutes - a.total_minutes))
+    .slice(0, limit)
+    .map((entry, index) => ({
+      ...entry,
+      position: index + 1
+    }));
+
+  return res.json({ code: 200, message: 'success', data: leaderboard });
 });
 
 app.get('/api/leaderboard', async (req, res) => {

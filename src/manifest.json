@@ -22,7 +22,10 @@
         "setting" : {
             "urlCheck" : false
         },
-        "usingComponents" : true
+        "usingComponents" : true,
+        "requiredPrivateInfos" : [
+            "getUserProfile"
+        ]
     },
     "mp-alipay" : {
         "usingComponents" : true

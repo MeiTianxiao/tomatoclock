@@ -48,6 +48,13 @@
         "navigationBarTitleText": "设置",
         "navigationStyle": "custom"
       }
+    },
+    {
+      "path": "pages/friends/index",
+      "style": {
+        "navigationBarTitleText": "好友",
+        "navigationStyle": "custom"
+      }
     }
   ],
   "globalStyle": {
