@@ -65,19 +65,27 @@
     "list": [
       {
         "pagePath": "pages/home/index",
-        "text": "首页"
+        "text": "首页",
+        "iconPath": "static/icons/home.png",
+        "selectedIconPath": "static/icons/home.png"
       },
       {
         "pagePath": "pages/leaderboard/index",
-        "text": "排行榜"
+        "text": "排行榜",
+        "iconPath": "static/icons/home.png",
+        "selectedIconPath": "static/icons/home.png"
       },
       {
         "pagePath": "pages/stats/index",
-        "text": "统计"
+        "text": "统计",
+        "iconPath": "static/icons/home.png",
+        "selectedIconPath": "static/icons/home.png"
       },
       {
         "pagePath": "pages/settings/index",
-        "text": "设置"
+        "text": "设置",
+        "iconPath": "static/icons/home.png",
+        "selectedIconPath": "static/icons/home.png"
       }
     ]
   }

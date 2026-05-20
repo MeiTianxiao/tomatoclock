@@ -16,6 +16,12 @@
   align-items: center;
   gap: 22rpx;
 }
+.greeting-title-row.data-v-4978fed5 {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0;
+}
 .avatar.data-v-4978fed5 {
   width: 88rpx;
   height: 88rpx;

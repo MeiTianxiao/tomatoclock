@@ -13,12 +13,6 @@
         <button class="wechat-btn" :disabled="wechatLoading" @click="wechatOneTap">
           {{ wechatLoading ? '微信登录中...' : '微信一键登录' }}
         </button>
-        <view v-if="needsPhoneBind" class="wechat-phone">
-          <button class="phone-btn" open-type="getPhoneNumber" @getphonenumber="onGetPhoneNumber">
-            授权手机号并继续
-          </button>
-          <button class="skip-btn" @click="goHome">暂不绑定，直接进入</button>
-        </view>
       </view>
       <view v-else class="wechat-login">
         <view class="wechat-tip">请在微信小程序中打开以使用微信登录</view>
@@ -56,7 +50,6 @@ import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
 const wechatLoading = ref(false)
-const needsPhoneBind = ref(false)
 
 const wxAny = (globalThis as any).wx
 const isWeixinMp = !!wxAny && typeof wxAny.login === 'function'
@@ -118,28 +111,12 @@ async function wechatOneTap() {
       avatar_url: typeof avatarUrl === 'string' ? avatarUrl : undefined
     })
 
-    needsPhoneBind.value = true
     uni.showToast({ title: '微信登录成功', icon: 'success' })
+    goHome()
   } catch (error: any) {
     uni.showToast({ title: error?.message || '微信登录失败', icon: 'none' })
   } finally {
     wechatLoading.value = false
-  }
-}
-
-async function onGetPhoneNumber(e: any) {
-  const code = e?.detail?.code
-  if (!code) {
-    uni.showToast({ title: '未获取到手机号授权', icon: 'none' })
-    return
-  }
-  try {
-    await userStore.bindPhone(code)
-    needsPhoneBind.value = false
-    uni.showToast({ title: '手机号绑定成功', icon: 'success' })
-    goHome()
-  } catch (error: any) {
-    uni.showToast({ title: error?.message || '手机号绑定失败', icon: 'none' })
   }
 }
 </script>

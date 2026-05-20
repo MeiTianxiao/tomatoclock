@@ -11,6 +11,9 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const timerStore = stores_timer.useTimerStore();
     const leaderboard = common_vendor.ref([]);
     const loading = common_vendor.ref(false);
+    const activeBoard = common_vendor.ref("all");
+    const wxAny = globalThis.wx;
+    const isWeixinMp = !!wxAny && typeof wxAny.login === "function";
     const currentUserId = common_vendor.computed(() => {
       var _a;
       return ((_a = userStore.user) == null ? void 0 : _a.id) || "";
@@ -41,7 +44,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         const data = await api_leaderboard.getLeaderboard(20);
         leaderboard.value = data;
       } catch (error) {
-        common_vendor.index.__f__("error", "at pages/leaderboard/index.vue:171", "加载排行榜失败:", error);
+        common_vendor.index.__f__("error", "at pages/leaderboard/index.vue:204", "加载排行榜失败:", error);
       } finally {
         loading.value = false;
       }
@@ -59,28 +62,34 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       loadLeaderboard();
     });
     return (_ctx, _cache) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q;
       return common_vendor.e({
-        a: (_a = leaderboard.value[1]) == null ? void 0 : _a.avatar_url
+        a: activeBoard.value === "all" ? 1 : "",
+        b: common_vendor.o(($event) => activeBoard.value = "all", "c6"),
+        c: activeBoard.value === "friend" ? 1 : "",
+        d: common_vendor.o(($event) => activeBoard.value = "friend", "a9"),
+        e: activeBoard.value === "all"
+      }, activeBoard.value === "all" ? common_vendor.e({
+        f: (_a = leaderboard.value[1]) == null ? void 0 : _a.avatar_url
       }, ((_b = leaderboard.value[1]) == null ? void 0 : _b.avatar_url) ? {
-        b: leaderboard.value[1].avatar_url
+        g: leaderboard.value[1].avatar_url
       } : {}, {
-        c: common_vendor.t(((_c = leaderboard.value[1]) == null ? void 0 : _c.nickname) || "---"),
-        d: common_vendor.t(((_d = leaderboard.value[1]) == null ? void 0 : _d.total_points) || 0),
-        e: (_e = leaderboard.value[0]) == null ? void 0 : _e.avatar_url
+        h: common_vendor.t(((_c = leaderboard.value[1]) == null ? void 0 : _c.nickname) || "---"),
+        i: common_vendor.t(((_d = leaderboard.value[1]) == null ? void 0 : _d.total_points) || 0),
+        j: (_e = leaderboard.value[0]) == null ? void 0 : _e.avatar_url
       }, ((_f = leaderboard.value[0]) == null ? void 0 : _f.avatar_url) ? {
-        f: leaderboard.value[0].avatar_url
+        k: leaderboard.value[0].avatar_url
       } : {}, {
-        g: common_vendor.t(((_g = leaderboard.value[0]) == null ? void 0 : _g.nickname) || "---"),
-        h: common_vendor.t(((_h = leaderboard.value[0]) == null ? void 0 : _h.total_points) || 0),
-        i: (_i = leaderboard.value[2]) == null ? void 0 : _i.avatar_url
+        l: common_vendor.t(((_g = leaderboard.value[0]) == null ? void 0 : _g.nickname) || "---"),
+        m: common_vendor.t(((_h = leaderboard.value[0]) == null ? void 0 : _h.total_points) || 0),
+        n: (_i = leaderboard.value[2]) == null ? void 0 : _i.avatar_url
       }, ((_j = leaderboard.value[2]) == null ? void 0 : _j.avatar_url) ? {
-        j: leaderboard.value[2].avatar_url
+        o: leaderboard.value[2].avatar_url
       } : {}, {
-        k: common_vendor.t(((_k = leaderboard.value[2]) == null ? void 0 : _k.nickname) || "---"),
-        l: common_vendor.t(((_l = leaderboard.value[2]) == null ? void 0 : _l.total_points) || 0),
-        m: common_vendor.t(leaderboard.value.length),
-        n: common_vendor.f(leaderboard.value.slice(3), (item, index, i0) => {
+        p: common_vendor.t(((_k = leaderboard.value[2]) == null ? void 0 : _k.nickname) || "---"),
+        q: common_vendor.t(((_l = leaderboard.value[2]) == null ? void 0 : _l.total_points) || 0),
+        r: common_vendor.t(leaderboard.value.length),
+        s: common_vendor.f(leaderboard.value.slice(3), (item, index, i0) => {
           return common_vendor.e({
             a: common_vendor.t(index + 4),
             b: item.avatar_url
@@ -98,18 +107,31 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             k: item.id === currentUserId.value ? 1 : ""
           });
         }),
-        o: loading.value
+        t: loading.value
       }, loading.value ? {} : {}, {
-        p: leaderboard.value.length === 0 && !loading.value
-      }, leaderboard.value.length === 0 && !loading.value ? {} : {}, {
-        q: myRank.value
+        v: leaderboard.value.length === 0 && !loading.value
+      }, leaderboard.value.length === 0 && !loading.value ? {} : {}) : {
+        w: common_vendor.o(($event) => activeBoard.value = "all", "c6")
+      }, {
+        x: common_vendor.unref(isWeixinMp)
+      }, common_vendor.unref(isWeixinMp) ? {} : ((_m = common_vendor.unref(userStore).user) == null ? void 0 : _m.avatar_url) ? {
+        z: common_vendor.unref(userStore).user.avatar_url
+      } : {
+        A: common_vendor.t(((_o = (_n = common_vendor.unref(userStore).user) == null ? void 0 : _n.nickname) == null ? void 0 : _o.slice(0, 1)) || "你")
+      }, {
+        y: (_p = common_vendor.unref(userStore).user) == null ? void 0 : _p.avatar_url,
+        B: common_vendor.unref(isWeixinMp)
+      }, common_vendor.unref(isWeixinMp) ? {} : {
+        C: common_vendor.t(((_q = common_vendor.unref(userStore).user) == null ? void 0 : _q.nickname) || "微信用户")
+      }, {
+        D: myRank.value
       }, myRank.value ? {
-        r: common_vendor.t(myRank.value.position)
+        E: common_vendor.t(myRank.value.position)
       } : {}, {
-        s: common_vendor.t(dailyPoints.value),
-        t: common_vendor.t(totalMinutes.value),
-        v: common_vendor.t(sessions.value.length),
-        w: common_vendor.o(goToFocus, "b1")
+        F: common_vendor.t(dailyPoints.value),
+        G: common_vendor.t(totalMinutes.value),
+        H: common_vendor.t(sessions.value.length),
+        I: common_vendor.o(goToFocus, "a3")
       });
     };
   }

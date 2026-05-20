@@ -3,11 +3,17 @@
     <view class="card greeting-card">
       <view class="greeting-row">
         <view class="avatar">
-          <image v-if="user?.avatar_url" class="avatar-img" :src="user.avatar_url" mode="aspectFill" />
+          <open-data v-if="isWeixinMp" class="avatar-img" type="userAvatarUrl" />
+          <image v-else-if="user?.avatar_url" class="avatar-img" :src="user.avatar_url" mode="aspectFill" />
           <view v-else class="avatar-fallback">{{ user?.nickname?.slice(0, 1) || '你' }}</view>
         </view>
         <view class="greeting-texts">
-          <text class="greeting-title">{{ greeting }}，{{ user?.nickname || '同学' }}！</text>
+          <view class="greeting-title-row">
+            <text class="greeting-title">{{ greeting }}，</text>
+            <open-data v-if="isWeixinMp" class="greeting-title" type="userNickName" />
+            <text v-else class="greeting-title">{{ user?.nickname || '同学' }}</text>
+            <text class="greeting-title">！</text>
+          </view>
           <text class="greeting-subtitle">下午好！保持专注，冲刺今日目标！</text>
         </view>
       </view>
@@ -18,7 +24,8 @@
     <view class="card points-card">
       <view class="points-avatar">
         <view class="avatar lg">
-          <image v-if="user?.avatar_url" class="avatar-img" :src="user.avatar_url" mode="aspectFill" />
+          <open-data v-if="isWeixinMp" class="avatar-img" type="userAvatarUrl" />
+          <image v-else-if="user?.avatar_url" class="avatar-img" :src="user.avatar_url" mode="aspectFill" />
           <view v-else class="avatar-fallback">{{ user?.nickname?.slice(0, 1) || '你' }}</view>
         </view>
         <view class="rank-pill" :style="{ background: rankInfo.color }">{{ rankInfo.name }}</view>
@@ -95,6 +102,7 @@ import { RANK_CONFIG, CATEGORY_CONFIG, type FocusCategory } from '@/types'
 
 const userStore = useUserStore()
 const timerStore = useTimerStore()
+const isWeixinMp = !!(globalThis as any).wx && typeof (globalThis as any).wx.getAccountInfoSync === 'function'
 
 const selectedDuration = ref(25)
 const selectedMode = ref<'strict' | 'gentle'>('strict')
@@ -209,6 +217,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 22rpx;
+}
+
+.greeting-title-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0;
 }
 
 .avatar {

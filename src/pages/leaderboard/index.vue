@@ -2,99 +2,128 @@
   <view class="page">
     <text class="page-title">排行榜</text>
 
-    <view class="card podium-card">
-      <view class="card-head">
-        <text class="card-title">本周荣誉榜</text>
-        <text class="card-sub">🏆 前三名</text>
+    <view class="board-tabs">
+      <view class="board-tab" :class="{ active: activeBoard === 'all' }" @click="activeBoard = 'all'">全站榜</view>
+      <view class="board-tab" :class="{ active: activeBoard === 'friend' }" @click="activeBoard = 'friend'">好友榜</view>
+    </view>
+
+    <view v-if="activeBoard === 'all'">
+      <view class="card podium-card">
+        <view class="card-head">
+          <text class="card-title">本周荣誉榜</text>
+          <text class="card-sub">🏆 前三名</text>
+        </view>
+
+        <view class="podium">
+        <view class="podium-item second">
+          <view class="podium-avatar">
+            <image v-if="leaderboard[1]?.avatar_url" class="podium-avatar-img" :src="leaderboard[1].avatar_url" mode="aspectFill" />
+            <text v-else class="podium-avatar-fallback">🥈</text>
+          </view>
+          <text class="podium-name">{{ leaderboard[1]?.nickname || '---' }}</text>
+          <view class="podium-score">
+            <text class="podium-points">{{ leaderboard[1]?.total_points || 0 }}</text>
+            <text class="podium-label">积分</text>
+          </view>
+          <view class="podium-stand" style="height: 100rpx;">2</view>
+        </view>
+        
+        <view class="podium-item first">
+          <view class="crown">👑</view>
+          <view class="podium-avatar">
+            <image v-if="leaderboard[0]?.avatar_url" class="podium-avatar-img" :src="leaderboard[0].avatar_url" mode="aspectFill" />
+            <text v-else class="podium-avatar-fallback">🥇</text>
+          </view>
+          <text class="podium-name">{{ leaderboard[0]?.nickname || '---' }}</text>
+          <view class="podium-score">
+            <text class="podium-points">{{ leaderboard[0]?.total_points || 0 }}</text>
+            <text class="podium-label">积分</text>
+          </view>
+          <view class="podium-stand" style="height: 160rpx;">1</view>
+        </view>
+        
+        <view class="podium-item third">
+          <view class="podium-avatar">
+            <image v-if="leaderboard[2]?.avatar_url" class="podium-avatar-img" :src="leaderboard[2].avatar_url" mode="aspectFill" />
+            <text v-else class="podium-avatar-fallback">🥉</text>
+          </view>
+          <text class="podium-name">{{ leaderboard[2]?.nickname || '---' }}</text>
+          <view class="podium-score">
+            <text class="podium-points">{{ leaderboard[2]?.total_points || 0 }}</text>
+            <text class="podium-label">积分</text>
+          </view>
+          <view class="podium-stand" style="height: 60rpx;">3</view>
+        </view>
+        </view>
       </view>
 
-      <view class="podium">
-      <view class="podium-item second">
-        <view class="podium-avatar">
-          <image v-if="leaderboard[1]?.avatar_url" class="podium-avatar-img" :src="leaderboard[1].avatar_url" mode="aspectFill" />
-          <text v-else class="podium-avatar-fallback">🥈</text>
+      <view class="card list-card">
+        <view class="list-header">
+          <text class="list-title">完整榜单</text>
+          <text class="list-count">共 {{ leaderboard.length }} 人</text>
         </view>
-        <text class="podium-name">{{ leaderboard[1]?.nickname || '---' }}</text>
-        <view class="podium-score">
-          <text class="podium-points">{{ leaderboard[1]?.total_points || 0 }}</text>
-          <text class="podium-label">积分</text>
+
+        <view class="list-content">
+          <view
+            v-for="(item, index) in leaderboard.slice(3)"
+            :key="item.id"
+            class="list-item"
+            :class="{ 'is-current': item.id === currentUserId }"
+          >
+            <view class="item-position">
+              <text class="position-number">{{ index + 4 }}</text>
+            </view>
+            <view class="item-avatar" :style="{ background: getRankColor(item.current_rank) }">
+              <image v-if="item.avatar_url" class="item-avatar-img" :src="item.avatar_url" mode="aspectFill" />
+              <text v-else class="item-avatar-fallback">{{ getRankIcon(item.current_rank) }}</text>
+            </view>
+            <view class="item-info">
+              <text class="item-name">{{ item.nickname }}</text>
+              <text class="item-rank">{{ getRankName(item.current_rank) }}</text>
+            </view>
+            <view class="item-stats">
+              <text class="item-points">{{ item.total_points }}分</text>
+              <text class="item-minutes">{{ item.total_minutes }}分钟</text>
+            </view>
+          </view>
+
+          <view v-if="loading" class="loading-more">
+            <text class="loading-text">加载中...</text>
+          </view>
+
+          <view v-if="leaderboard.length === 0 && !loading" class="empty-state">
+            <text class="empty-icon">📊</text>
+            <text class="empty-text">暂无数据</text>
+          </view>
         </view>
-        <view class="podium-stand" style="height: 100rpx;">2</view>
-      </view>
-      
-      <view class="podium-item first">
-        <view class="crown">👑</view>
-        <view class="podium-avatar">
-          <image v-if="leaderboard[0]?.avatar_url" class="podium-avatar-img" :src="leaderboard[0].avatar_url" mode="aspectFill" />
-          <text v-else class="podium-avatar-fallback">🥇</text>
-        </view>
-        <text class="podium-name">{{ leaderboard[0]?.nickname || '---' }}</text>
-        <view class="podium-score">
-          <text class="podium-points">{{ leaderboard[0]?.total_points || 0 }}</text>
-          <text class="podium-label">积分</text>
-        </view>
-        <view class="podium-stand" style="height: 160rpx;">1</view>
-      </view>
-      
-      <view class="podium-item third">
-        <view class="podium-avatar">
-          <image v-if="leaderboard[2]?.avatar_url" class="podium-avatar-img" :src="leaderboard[2].avatar_url" mode="aspectFill" />
-          <text v-else class="podium-avatar-fallback">🥉</text>
-        </view>
-        <text class="podium-name">{{ leaderboard[2]?.nickname || '---' }}</text>
-        <view class="podium-score">
-          <text class="podium-points">{{ leaderboard[2]?.total_points || 0 }}</text>
-          <text class="podium-label">积分</text>
-        </view>
-        <view class="podium-stand" style="height: 60rpx;">3</view>
-      </view>
       </view>
     </view>
 
-    <view class="card list-card">
-      <view class="list-header">
-        <text class="list-title">完整榜单</text>
-        <text class="list-count">共 {{ leaderboard.length }} 人</text>
+    <view v-else class="card friend-card">
+      <view class="friend-head">
+        <text class="friend-title">好友榜</text>
+        <text class="friend-sub">仅展示使用过本小程序的微信好友</text>
       </view>
-
-      <view class="list-content">
-        <view
-          v-for="(item, index) in leaderboard.slice(3)"
-          :key="item.id"
-          class="list-item"
-          :class="{ 'is-current': item.id === currentUserId }"
-        >
-          <view class="item-position">
-            <text class="position-number">{{ index + 4 }}</text>
-          </view>
-          <view class="item-avatar" :style="{ background: getRankColor(item.current_rank) }">
-            <image v-if="item.avatar_url" class="item-avatar-img" :src="item.avatar_url" mode="aspectFill" />
-            <text v-else class="item-avatar-fallback">{{ getRankIcon(item.current_rank) }}</text>
-          </view>
-          <view class="item-info">
-            <text class="item-name">{{ item.nickname }}</text>
-            <text class="item-rank">{{ getRankName(item.current_rank) }}</text>
-          </view>
-          <view class="item-stats">
-            <text class="item-points">{{ item.total_points }}分</text>
-            <text class="item-minutes">{{ item.total_minutes }}分钟</text>
-          </view>
-        </view>
-
-        <view v-if="loading" class="loading-more">
-          <text class="loading-text">加载中...</text>
-        </view>
-
-        <view v-if="leaderboard.length === 0 && !loading" class="empty-state">
-          <text class="empty-icon">📊</text>
-          <text class="empty-text">暂无数据</text>
-        </view>
+      <view class="friend-body">
+        <text class="friend-tip">微信小程序无法直接读取通讯录或好友列表。要做“好友榜”，需要接入开放数据域能力（好友云存储）或在应用内做好友关系（邀请码/互相关注）。</text>
+        <button class="btn btn-primary btn-block" @click="activeBoard = 'all'">先看全站榜</button>
       </view>
     </view>
 
     <view class="card my-rank-card">
         <view class="my-rank-header">
-          <text class="my-rank-title">我的排名</text>
+          <view class="my-user">
+            <view class="my-avatar">
+              <open-data v-if="isWeixinMp" class="my-avatar-img" type="userAvatarUrl" />
+              <image v-else-if="userStore.user?.avatar_url" class="my-avatar-img" :src="userStore.user.avatar_url" mode="aspectFill" />
+              <view v-else class="my-avatar-fallback">{{ userStore.user?.nickname?.slice(0, 1) || '你' }}</view>
+            </view>
+            <view class="my-user-info">
+              <open-data v-if="isWeixinMp" class="my-user-name" type="userNickName" />
+              <text v-else class="my-user-name">{{ userStore.user?.nickname || '微信用户' }}</text>
+              <text class="my-user-sub">我的排名</text>
+            </view>
+          </view>
           <view class="my-position" v-if="myRank">
             <text class="position-num">{{ myRank.position }}</text>
             <text class="position-label">名</text>
@@ -137,6 +166,10 @@ const timerStore = useTimerStore()
 
 const leaderboard = ref<LeaderboardItem[]>([])
 const loading = ref(false)
+const activeBoard = ref<'all' | 'friend'>('all')
+
+const wxAny = (globalThis as any).wx
+const isWeixinMp = !!wxAny && typeof wxAny.login === 'function'
 
 const currentUserId = computed(() => userStore.user?.id || '')
 const dailyPoints = computed(() => timerStore.dailyPoints)
@@ -206,6 +239,34 @@ onMounted(() => {
   color: #0f172a;
   text-align: center;
   margin: 10rpx 0 26rpx;
+}
+
+.board-tabs {
+  background: #fff;
+  border-radius: 999rpx;
+  padding: 10rpx;
+  display: flex;
+  gap: 10rpx;
+  margin-bottom: 26rpx;
+  box-shadow: 0 18rpx 60rpx rgba(15, 23, 42, 0.08);
+}
+
+.board-tab {
+  flex: 1;
+  height: 68rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  font-weight: 900;
+  color: #64748b;
+  background: transparent;
+
+  &.active {
+    background: #3b82f6;
+    color: #fff;
+  }
 }
 
 .card {
@@ -488,6 +549,36 @@ onMounted(() => {
   color: #9ca3af;
 }
 
+.friend-card {
+  background: #fff;
+}
+
+.friend-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 18rpx;
+}
+
+.friend-title {
+  font-size: 32rpx;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.friend-sub {
+  font-size: 22rpx;
+  color: #64748b;
+}
+
+.friend-tip {
+  display: block;
+  font-size: 26rpx;
+  color: #475569;
+  line-height: 1.6;
+  margin-bottom: 20rpx;
+}
+
 .my-rank-card {
   background: #111827;
 }
@@ -499,10 +590,51 @@ onMounted(() => {
   margin-bottom: 24rpx;
 }
 
-.my-rank-title {
-  font-size: 30rpx;
-  font-weight: 600;
+.my-user {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.my-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.my-avatar-img {
+  width: 72rpx;
+  height: 72rpx;
+  display: block;
+}
+
+.my-avatar-fallback {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.my-user-name {
+  font-size: 28rpx;
+  font-weight: 800;
   color: #fff;
+  display: block;
+  max-width: 280rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-user-sub {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.72);
+  display: block;
+  margin-top: 4rpx;
 }
 
 .my-position {

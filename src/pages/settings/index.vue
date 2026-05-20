@@ -6,10 +6,12 @@
 
     <view class="user-card">
       <view class="user-avatar" :style="{ background: rankColor }">
-        {{ rankIcon }}
+        <open-data v-if="isWeixinMp" class="user-avatar-img" type="userAvatarUrl" />
+        <text v-else>{{ rankIcon }}</text>
       </view>
       <view class="user-info">
-        <text class="user-name">{{ user?.nickname }}</text>
+        <open-data v-if="isWeixinMp" class="user-name" type="userNickName" />
+        <text v-else class="user-name">{{ user?.nickname }}</text>
         <text class="user-rank">{{ rankName }}</text>
       </view>
       <button class="edit-btn" @click="editProfile">
@@ -149,6 +151,7 @@ import { useUserStore } from '@/stores/user'
 import { RANK_CONFIG } from '@/types'
 
 const userStore = useUserStore()
+const isWeixinMp = !!(globalThis as any).wx && typeof (globalThis as any).wx.getAccountInfoSync === 'function'
 
 interface Settings {
   notifications: boolean

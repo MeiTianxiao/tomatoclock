@@ -6,6 +6,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "index",
   setup(__props) {
     const userStore = stores_user.useUserStore();
+    const isWeixinMp = !!globalThis.wx && typeof globalThis.wx.getAccountInfoSync === "function";
     const settings = common_vendor.ref({
       notifications: true,
       soundEnabled: true,
@@ -112,30 +113,36 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     });
     return (_ctx, _cache) => {
       var _a;
-      return {
-        a: common_vendor.t(rankIcon.value),
-        b: rankColor.value,
-        c: common_vendor.t((_a = user.value) == null ? void 0 : _a.nickname),
-        d: common_vendor.t(rankName.value),
-        e: common_vendor.o(editProfile, "59"),
-        f: settings.value.notifications,
-        g: common_vendor.o(($event) => toggleSetting("notifications"), "a9"),
-        h: settings.value.soundEnabled,
-        i: common_vendor.o(($event) => toggleSetting("soundEnabled"), "4a"),
-        j: settings.value.darkMode,
-        k: common_vendor.o(($event) => toggleSetting("darkMode"), "04"),
-        l: settings.value.privacyMode,
-        m: common_vendor.o(($event) => toggleSetting("privacyMode"), "3d"),
-        n: common_vendor.t(settings.value.dailyGoal),
-        o: common_vendor.o(showGoalSettings, "a1"),
-        p: common_vendor.t(themeNames[settings.value.theme]),
-        q: common_vendor.o(showThemeSettings, "31"),
-        r: common_vendor.o(exportData, "61"),
-        s: common_vendor.o(clearData, "d0"),
-        t: common_vendor.o(showAbout, "80"),
-        v: common_vendor.o(showFeedback, "13"),
-        w: common_vendor.o(handleLogout, "09")
-      };
+      return common_vendor.e({
+        a: common_vendor.unref(isWeixinMp)
+      }, common_vendor.unref(isWeixinMp) ? {} : {
+        b: common_vendor.t(rankIcon.value)
+      }, {
+        c: rankColor.value,
+        d: common_vendor.unref(isWeixinMp)
+      }, common_vendor.unref(isWeixinMp) ? {} : {
+        e: common_vendor.t((_a = user.value) == null ? void 0 : _a.nickname)
+      }, {
+        f: common_vendor.t(rankName.value),
+        g: common_vendor.o(editProfile, "7a"),
+        h: settings.value.notifications,
+        i: common_vendor.o(($event) => toggleSetting("notifications"), "41"),
+        j: settings.value.soundEnabled,
+        k: common_vendor.o(($event) => toggleSetting("soundEnabled"), "85"),
+        l: settings.value.darkMode,
+        m: common_vendor.o(($event) => toggleSetting("darkMode"), "40"),
+        n: settings.value.privacyMode,
+        o: common_vendor.o(($event) => toggleSetting("privacyMode"), "3e"),
+        p: common_vendor.t(settings.value.dailyGoal),
+        q: common_vendor.o(showGoalSettings, "81"),
+        r: common_vendor.t(themeNames[settings.value.theme]),
+        s: common_vendor.o(showThemeSettings, "a6"),
+        t: common_vendor.o(exportData, "00"),
+        v: common_vendor.o(clearData, "b0"),
+        w: common_vendor.o(showAbout, "5a"),
+        x: common_vendor.o(showFeedback, "b8"),
+        y: common_vendor.o(handleLogout, "be")
+      });
     };
   }
 });

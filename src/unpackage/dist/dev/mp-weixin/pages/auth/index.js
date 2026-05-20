@@ -6,7 +6,6 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   setup(__props) {
     const userStore = stores_user.useUserStore();
     const wechatLoading = common_vendor.ref(false);
-    const needsPhoneBind = common_vendor.ref(false);
     const wxAny = globalThis.wx;
     const isWeixinMp = !!wxAny && typeof wxAny.login === "function";
     function goHome() {
@@ -64,42 +63,22 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           nickname: typeof nickName === "string" ? nickName : void 0,
           avatar_url: typeof avatarUrl === "string" ? avatarUrl : void 0
         });
-        needsPhoneBind.value = true;
         common_vendor.index.showToast({ title: "微信登录成功", icon: "success" });
+        goHome();
       } catch (error) {
         common_vendor.index.showToast({ title: (error == null ? void 0 : error.message) || "微信登录失败", icon: "none" });
       } finally {
         wechatLoading.value = false;
       }
     }
-    async function onGetPhoneNumber(e) {
-      var _a;
-      const code = (_a = e == null ? void 0 : e.detail) == null ? void 0 : _a.code;
-      if (!code) {
-        common_vendor.index.showToast({ title: "未获取到手机号授权", icon: "none" });
-        return;
-      }
-      try {
-        await userStore.bindPhone(code);
-        needsPhoneBind.value = false;
-        common_vendor.index.showToast({ title: "手机号绑定成功", icon: "success" });
-        goHome();
-      } catch (error) {
-        common_vendor.index.showToast({ title: (error == null ? void 0 : error.message) || "手机号绑定失败", icon: "none" });
-      }
-    }
     return (_ctx, _cache) => {
       return common_vendor.e({
         a: common_vendor.unref(isWeixinMp)
-      }, common_vendor.unref(isWeixinMp) ? common_vendor.e({
+      }, common_vendor.unref(isWeixinMp) ? {
         b: common_vendor.t(wechatLoading.value ? "微信登录中..." : "微信一键登录"),
         c: wechatLoading.value,
-        d: common_vendor.o(wechatOneTap, "11"),
-        e: needsPhoneBind.value
-      }, needsPhoneBind.value ? {
-        f: common_vendor.o(onGetPhoneNumber, "1a"),
-        g: common_vendor.o(goHome, "dc")
-      } : {}) : {});
+        d: common_vendor.o(wechatOneTap, "11")
+      } : {});
     };
   }
 });
