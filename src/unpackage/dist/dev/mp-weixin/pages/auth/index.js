@@ -5,16 +5,10 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "index",
   setup(__props) {
     const userStore = stores_user.useUserStore();
-    const nickname = common_vendor.ref("");
-    const loading = common_vendor.ref(false);
-    const mode = common_vendor.ref("login");
     const wechatLoading = common_vendor.ref(false);
     const needsPhoneBind = common_vendor.ref(false);
     const wxAny = globalThis.wx;
     const isWeixinMp = !!wxAny && typeof wxAny.login === "function";
-    function goDevConfig() {
-      common_vendor.index.navigateTo({ url: "/pages/dev-api/index" });
-    }
     function goHome() {
       setTimeout(() => {
         common_vendor.index.switchTab({
@@ -94,27 +88,6 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         common_vendor.index.showToast({ title: (error == null ? void 0 : error.message) || "手机号绑定失败", icon: "none" });
       }
     }
-    async function submit() {
-      if (nickname.value.trim().length < 2) {
-        common_vendor.index.showToast({ title: "昵称至少需要2个字符", icon: "none" });
-        return;
-      }
-      loading.value = true;
-      try {
-        if (mode.value === "register") {
-          await userStore.registerUser(nickname.value.trim());
-          common_vendor.index.showToast({ title: "注册成功", icon: "success" });
-        } else {
-          await userStore.loginUser(nickname.value.trim());
-          common_vendor.index.showToast({ title: "登录成功", icon: "success" });
-        }
-        goHome();
-      } catch (error) {
-        common_vendor.index.showToast({ title: (error == null ? void 0 : error.message) || "操作失败，请重试", icon: "none" });
-      } finally {
-        loading.value = false;
-      }
-    }
     return (_ctx, _cache) => {
       return common_vendor.e({
         a: common_vendor.unref(isWeixinMp)
@@ -126,21 +99,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }, needsPhoneBind.value ? {
         f: common_vendor.o(onGetPhoneNumber, "1a"),
         g: common_vendor.o(goHome, "dc")
-      } : {}) : {}, {
-        h: mode.value === "login" ? 1 : "",
-        i: common_vendor.o(($event) => mode.value = "login", "ae"),
-        j: mode.value === "register" ? 1 : "",
-        k: common_vendor.o(($event) => mode.value = "register", "34"),
-        l: common_vendor.t(mode.value === "register" ? "设置昵称" : "输入昵称"),
-        m: common_vendor.o(submit, "7a"),
-        n: nickname.value,
-        o: common_vendor.o(($event) => nickname.value = $event.detail.value, "1e"),
-        p: common_vendor.t(mode.value === "register" ? "昵称将显示在排行榜上，至少2个字符" : "使用注册时的昵称登录"),
-        q: common_vendor.t(loading.value ? "处理中..." : mode.value === "register" ? "创建账户并开始" : "登录"),
-        r: loading.value || nickname.value.trim().length < 2,
-        s: common_vendor.o(submit, "9f"),
-        t: common_vendor.o(goDevConfig, "d8")
-      });
+      } : {}) : {});
     };
   }
 });

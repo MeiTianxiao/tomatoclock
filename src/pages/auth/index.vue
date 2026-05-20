@@ -20,49 +20,11 @@
           <button class="skip-btn" @click="goHome">暂不绑定，直接进入</button>
         </view>
       </view>
-
-      <view class="mode-tabs">
-        <button
-          class="tab-btn"
-          :class="{ active: mode === 'login' }"
-          @click="mode = 'login'"
-        >
-          <text class="tab-icon">→</text>
-          登录
-        </button>
-        <button
-          class="tab-btn"
-          :class="{ active: mode === 'register' }"
-          @click="mode = 'register'"
-        >
-          <text class="tab-icon">＋</text>
-          注册
-        </button>
+      <view v-else class="wechat-login">
+        <view class="wechat-tip">请在微信小程序中打开以使用微信登录</view>
       </view>
 
       <view class="form">
-        <view class="field">
-          <text class="label">{{ mode === 'register' ? '设置昵称' : '输入昵称' }}</text>
-          <input
-            v-model="nickname"
-            type="text"
-            class="input"
-            placeholder="请输入您的昵称"
-            placeholder-class="placeholder"
-            maxlength="20"
-            @confirm="submit"
-          />
-          <text class="hint">
-            {{ mode === 'register' ? '昵称将显示在排行榜上，至少2个字符' : '使用注册时的昵称登录' }}
-          </text>
-        </view>
-
-        <button class="submit" :disabled="loading || nickname.trim().length < 2" @click="submit">
-          {{ loading ? '处理中...' : mode === 'register' ? '创建账户并开始' : '登录' }}
-        </button>
-
-        <button class="link-btn" @click="goDevConfig">接口配置</button>
-
         <view class="privacy">
           <text>本应用使用Supabase安全存储您的数据</text>
           <text class="privacy-sub">我们不会收集任何敏感个人信息</text>
@@ -93,18 +55,11 @@ import { ref } from 'vue'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
-const nickname = ref('')
-const loading = ref(false)
-const mode = ref<'login' | 'register'>('login')
 const wechatLoading = ref(false)
 const needsPhoneBind = ref(false)
 
 const wxAny = (globalThis as any).wx
 const isWeixinMp = !!wxAny && typeof wxAny.login === 'function'
-
-function goDevConfig() {
-  uni.navigateTo({ url: '/pages/dev-api/index' })
-}
 
 function goHome() {
   setTimeout(() => {
@@ -185,29 +140,6 @@ async function onGetPhoneNumber(e: any) {
     goHome()
   } catch (error: any) {
     uni.showToast({ title: error?.message || '手机号绑定失败', icon: 'none' })
-  }
-}
-
-async function submit() {
-  if (nickname.value.trim().length < 2) {
-    uni.showToast({ title: '昵称至少需要2个字符', icon: 'none' })
-    return
-  }
-
-  loading.value = true
-  try {
-    if (mode.value === 'register') {
-      await userStore.registerUser(nickname.value.trim())
-      uni.showToast({ title: '注册成功', icon: 'success' })
-    } else {
-      await userStore.loginUser(nickname.value.trim())
-      uni.showToast({ title: '登录成功', icon: 'success' })
-    }
-    goHome()
-  } catch (error: any) {
-    uni.showToast({ title: error?.message || '操作失败，请重试', icon: 'none' })
-  } finally {
-    loading.value = false
   }
 }
 </script>

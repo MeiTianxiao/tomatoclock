@@ -244,7 +244,7 @@ app.post('/api/wechat/login', async (req, res) => {
         return res.json({ code: 200, message: '登录成功', data: { user: updated, token: updated.id } });
       }
 
-      const finalNickname = await pickUniqueNickname(nickname);
+      const finalNickname = typeof nickname === 'string' && nickname.length >= 2 ? nickname : '微信用户';
 
       const { data: newUser, error: insertError } = await supabase
         .from('users')
@@ -283,7 +283,7 @@ app.post('/api/wechat/login', async (req, res) => {
     return res.json({ code: 200, message: '登录成功', data: { user: existed, token: existed.id } });
   }
 
-  const finalNickname = await pickUniqueNickname(nickname);
+  const finalNickname = typeof nickname === 'string' && nickname.length >= 2 ? nickname : '微信用户';
   const newUser = {
     id: uuidv4(),
     nickname: finalNickname,

@@ -1,41 +1,27 @@
 let hasShownBaseURLTip = false
 let hasRetriedWakeup = false
+const DEFAULT_API_BASE_URL = 'https://tomatoclock.onrender.com/api'
 
 function getBaseURLMeta() {
   const wxAny = (globalThis as any).wx
   const isWeixinMp = !!wxAny && typeof wxAny.getAccountInfoSync === 'function'
 
   if (isWeixinMp) {
-    const sys = uni.getSystemInfoSync()
     const prod = uni.getStorageSync('PROD_API_BASE_URL')
     if (typeof prod === 'string' && /^https?:\/\//.test(prod)) {
       return { baseURL: prod, needsDevConfig: false }
     }
 
-    const stored = uni.getStorageSync('DEV_MP_API_BASE_URL')
-    if (typeof stored === 'string' && /^https?:\/\//.test(stored)) {
-      return { baseURL: stored, needsDevConfig: false }
-    }
-
-    if (sys.platform === 'devtools') {
-      return { baseURL: 'http://localhost:3000/api', needsDevConfig: false }
-    }
-
-    if (!hasShownBaseURLTip) {
-      hasShownBaseURLTip = true
-      uni.navigateTo({ url: '/pages/dev-api/index' })
-    }
-
-    return { baseURL: '', needsDevConfig: true }
+    return { baseURL: DEFAULT_API_BASE_URL, needsDevConfig: false }
   }
 
   if (typeof location !== 'undefined') {
     const isDevHost = ['localhost', '127.0.0.1'].includes(location.hostname)
-    const baseURL = isDevHost ? 'http://localhost:3000/api' : 'http://localhost:3000/api'
+    const baseURL = isDevHost ? 'http://localhost:3000/api' : DEFAULT_API_BASE_URL
     return { baseURL, needsDevConfig: false }
   }
 
-  return { baseURL: 'http://localhost:3000/api', needsDevConfig: false }
+  return { baseURL: DEFAULT_API_BASE_URL, needsDevConfig: false }
 }
 
 export interface ResponseData<T = any> {

@@ -1,35 +1,23 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
-let hasShownBaseURLTip = false;
 let hasRetriedWakeup = false;
+const DEFAULT_API_BASE_URL = "https://tomatoclock.onrender.com/api";
 function getBaseURLMeta() {
   const wxAny = globalThis.wx;
   const isWeixinMp = !!wxAny && typeof wxAny.getAccountInfoSync === "function";
   if (isWeixinMp) {
-    const sys = common_vendor.index.getSystemInfoSync();
     const prod = common_vendor.index.getStorageSync("PROD_API_BASE_URL");
     if (typeof prod === "string" && /^https?:\/\//.test(prod)) {
       return { baseURL: prod, needsDevConfig: false };
     }
-    const stored = common_vendor.index.getStorageSync("DEV_MP_API_BASE_URL");
-    if (typeof stored === "string" && /^https?:\/\//.test(stored)) {
-      return { baseURL: stored, needsDevConfig: false };
-    }
-    if (sys.platform === "devtools") {
-      return { baseURL: "http://localhost:3000/api", needsDevConfig: false };
-    }
-    if (!hasShownBaseURLTip) {
-      hasShownBaseURLTip = true;
-      common_vendor.index.navigateTo({ url: "/pages/dev-api/index" });
-    }
-    return { baseURL: "", needsDevConfig: true };
+    return { baseURL: DEFAULT_API_BASE_URL, needsDevConfig: false };
   }
   if (typeof location !== "undefined") {
     const isDevHost = ["localhost", "127.0.0.1"].includes(location.hostname);
-    const baseURL = isDevHost ? "http://localhost:3000/api" : "http://localhost:3000/api";
+    const baseURL = isDevHost ? "http://localhost:3000/api" : DEFAULT_API_BASE_URL;
     return { baseURL, needsDevConfig: false };
   }
-  return { baseURL: "http://localhost:3000/api", needsDevConfig: false };
+  return { baseURL: DEFAULT_API_BASE_URL, needsDevConfig: false };
 }
 async function request(url, options = {}) {
   const { method = "GET", data = {}, headers = {} } = options;

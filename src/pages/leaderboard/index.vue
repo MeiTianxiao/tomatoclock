@@ -10,7 +10,10 @@
 
       <view class="podium">
       <view class="podium-item second">
-        <view class="podium-avatar">🥈</view>
+        <view class="podium-avatar">
+          <image v-if="leaderboard[1]?.avatar_url" class="podium-avatar-img" :src="leaderboard[1].avatar_url" mode="aspectFill" />
+          <text v-else class="podium-avatar-fallback">🥈</text>
+        </view>
         <text class="podium-name">{{ leaderboard[1]?.nickname || '---' }}</text>
         <view class="podium-score">
           <text class="podium-points">{{ leaderboard[1]?.total_points || 0 }}</text>
@@ -21,7 +24,10 @@
       
       <view class="podium-item first">
         <view class="crown">👑</view>
-        <view class="podium-avatar">🥇</view>
+        <view class="podium-avatar">
+          <image v-if="leaderboard[0]?.avatar_url" class="podium-avatar-img" :src="leaderboard[0].avatar_url" mode="aspectFill" />
+          <text v-else class="podium-avatar-fallback">🥇</text>
+        </view>
         <text class="podium-name">{{ leaderboard[0]?.nickname || '---' }}</text>
         <view class="podium-score">
           <text class="podium-points">{{ leaderboard[0]?.total_points || 0 }}</text>
@@ -31,7 +37,10 @@
       </view>
       
       <view class="podium-item third">
-        <view class="podium-avatar">🥉</view>
+        <view class="podium-avatar">
+          <image v-if="leaderboard[2]?.avatar_url" class="podium-avatar-img" :src="leaderboard[2].avatar_url" mode="aspectFill" />
+          <text v-else class="podium-avatar-fallback">🥉</text>
+        </view>
         <text class="podium-name">{{ leaderboard[2]?.nickname || '---' }}</text>
         <view class="podium-score">
           <text class="podium-points">{{ leaderboard[2]?.total_points || 0 }}</text>
@@ -59,7 +68,8 @@
             <text class="position-number">{{ index + 4 }}</text>
           </view>
           <view class="item-avatar" :style="{ background: getRankColor(item.current_rank) }">
-            {{ getRankIcon(item.current_rank) }}
+            <image v-if="item.avatar_url" class="item-avatar-img" :src="item.avatar_url" mode="aspectFill" />
+            <text v-else class="item-avatar-fallback">{{ getRankIcon(item.current_rank) }}</text>
           </view>
           <view class="item-info">
             <text class="item-name">{{ item.nickname }}</text>
@@ -266,6 +276,16 @@ onMounted(() => {
   justify-content: center;
   font-size: 48rpx;
   box-shadow: 0 12rpx 40rpx rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+.podium-avatar-img {
+  width: 100%;
+  height: 100%;
+}
+
+.podium-avatar-fallback {
+  font-size: 48rpx;
 }
 
 .podium-name {
@@ -394,6 +414,16 @@ onMounted(() => {
   justify-content: center;
   font-size: 32rpx;
   margin-right: 20rpx;
+  overflow: hidden;
+}
+
+.item-avatar-img {
+  width: 100%;
+  height: 100%;
+}
+
+.item-avatar-fallback {
+  font-size: 32rpx;
 }
 
 .item-info {
