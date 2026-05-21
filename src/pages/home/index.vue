@@ -10,7 +10,7 @@
         <view class="greeting-texts">
           <view class="greeting-title-row">
             <text class="greeting-title">{{ greeting }}，</text>
-            <text v-if="user?.nickname" class="greeting-title">{{ user.nickname }}</text>
+            <text v-if="hasRealNickname" class="greeting-title">{{ user?.nickname }}</text>
             <open-data v-else-if="isWeixinMp" class="greeting-title" type="userNickName" />
             <text v-else class="greeting-title">同学</text>
             <text class="greeting-title">！</text>
@@ -19,7 +19,13 @@
         </view>
       </view>
       <view class="greeting-banner">保持专注，你一定能做到！</view>
-      <text class="greeting-meta">本周已专注 {{ (totalMinutes / 60).toFixed(1) }} 小时，距离 {{ nextRank?.name || '已满级' }} 还需 {{ pointsToNextRank }} 分</text>
+      <text class="greeting-meta">本周已专注 {{ (totalMinutes / 60).toFixed(1) }} 小时，距离下一职级还需 {{ pointsToNextRank }} 分</text>
+    </view>
+
+    <!-- 烟花特效 -->
+    <view v-if="showFireworks" class="fireworks-container">
+      <view class="firework" v-for="i in 5" :key="i"></view>
+      <view class="celebration-text">🎯 恭喜达成每日目标！</view>
     </view>
 
     <view class="card points-card">
@@ -34,7 +40,7 @@
       <text class="points-label">当前积分</text>
       <text class="points-value">{{ dailyPoints }}</text>
       <view class="points-progress">
-        <text class="progress-left">距离 {{ nextRank?.name || '已满级' }}</text>
+        <text class="progress-left">距离下一职级</text>
         <text class="progress-right">{{ pointsToNextRank }} 分</text>
       </view>
       <view class="progress-bar">
@@ -51,17 +57,19 @@
           v-for="duration in durationOptions"
           :key="duration.value"
           class="duration-item"
-          :class="{ active: selectedDuration === duration.value }"
-          @click="selectedDuration = duration.value"
+          :class="{ active: selectedDuration === duration.value && !isCustomDuration }"
+          @click="selectedDuration = duration.value; isCustomDuration = false"
         >
           <text class="duration-num">{{ duration.value }}</text>
           <text class="duration-unit">分钟</text>
           <text class="duration-desc">{{ duration.desc }}</text>
         </view>
-        <view class="duration-item" :class="{ active: isCustomDuration }" @click="pickCustomDuration">
-          <text class="duration-custom-title">自定义时长</text>
-          <text class="duration-custom-desc">(10-120分钟)</text>
-        </view>
+        <picker mode="selector" :range="customOptions" @change="onCustomDurationChange">
+          <view class="duration-item" :class="{ active: isCustomDuration }">
+            <text class="duration-custom-title">自定义时长</text>
+            <text class="duration-custom-desc">({{ isCustomDuration ? selectedDuration : '10-120' }}分钟)</text>
+          </view>
+        </picker>
       </view>
 
       <text class="section-subtitle">选择专注事项</text>
@@ -105,6 +113,8 @@ const userStore = useUserStore()
 const timerStore = useTimerStore()
 const isWeixinMp = !!(globalThis as any).wx && typeof (globalThis as any).wx.getAccountInfoSync === 'function'
 
+const showFireworks = ref(false)
+
 const selectedDuration = ref(25)
 const selectedMode = ref<'strict' | 'gentle'>('strict')
 const selectedCategory = ref<FocusCategory>('study')
@@ -119,6 +129,11 @@ const durationOptions = [
 ]
 
 const user = computed(() => userStore.user)
+const hasRealNickname = computed(() => {
+  const name = user.value?.nickname || ''
+  if (!name) return false
+  return !name.startsWith('微信用户')
+})
 const dailyPoints = computed(() => timerStore.dailyPoints)
 const currentRank = computed(() => timerStore.currentRank)
 const sessions = computed(() => timerStore.sessions)
@@ -174,18 +189,16 @@ function startFocus() {
   uni.navigateTo({ url: '/pages/timer/index' })
 }
 
-function pickCustomDuration() {
-  const options = Array.from({ length: 12 }, (_, i) => (i + 1) * 10)
-  uni.showActionSheet({
-    itemList: options.map(v => `${v} 分钟`),
-    success: (res) => {
-      const picked = options[res.tapIndex]
-      if (picked) {
-        selectedDuration.value = picked
-        isCustomDuration.value = true
-      }
-    }
-  })
+const customValues = Array.from({ length: 12 }, (_, i) => (i + 1) * 10)
+const customOptions = customValues.map(v => `${v} 分钟`)
+
+function onCustomDurationChange(e: any) {
+  const index = e.detail.value
+  const picked = customValues[index]
+  if (picked) {
+    selectedDuration.value = picked
+    isCustomDuration.value = true
+  }
 }
 
 onMounted(() => {
@@ -195,7 +208,31 @@ onMounted(() => {
   if (!userStore.isLoggedIn) {
     uni.navigateTo({ url: '/pages/auth/index' })
   }
+  
+  checkDailyGoal()
 })
+
+function checkDailyGoal() {
+  const settings = uni.getStorageSync('app-settings')
+  if (settings) {
+    try {
+      const parsed = JSON.parse(settings)
+      const dailyGoal = parsed.dailyGoal || 120
+      if (timerStore.dailyPoints > 0 && timerStore.totalDuration / 60 >= dailyGoal) {
+        // 检查今天是否已经庆祝过
+        const today = new Date().toDateString()
+        const lastCelebration = uni.getStorageSync('last-celebration')
+        if (lastCelebration !== today) {
+          showFireworks.value = true
+          uni.setStorageSync('last-celebration', today)
+          setTimeout(() => {
+            showFireworks.value = false
+          }, 4000)
+        }
+      }
+    } catch {}
+  }
+}
 </script>
 
 <style lang="scss" scoped>
@@ -247,6 +284,8 @@ onMounted(() => {
 .avatar-img {
   width: 100%;
   height: 100%;
+  border-radius: 48rpx;
+  display: block;
 }
 
 .avatar-fallback {
@@ -295,6 +334,68 @@ onMounted(() => {
 .points-card {
   padding-top: 44rpx;
   text-align: center;
+}
+
+/* 烟花特效 */
+.fireworks-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.celebration-text {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #f59e0b;
+  text-shadow: 0 4rpx 12rpx rgba(245, 158, 11, 0.3);
+  animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.firework {
+  position: absolute;
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  box-shadow: 
+    0 0 #ef4444, 0 0 #3b82f6, 0 0 #10b981, 0 0 #f59e0b,
+    0 0 #8b5cf6, 0 0 #ec4899, 0 0 #06b6d4, 0 0 #f43f5e;
+  animation: explode 1s ease-out infinite;
+}
+
+.firework:nth-child(1) { top: 30%; left: 30%; animation-delay: 0s; }
+.firework:nth-child(2) { top: 40%; left: 70%; animation-delay: 0.2s; }
+.firework:nth-child(3) { top: 60%; left: 40%; animation-delay: 0.4s; }
+.firework:nth-child(4) { top: 20%; left: 60%; animation-delay: 0.1s; }
+.firework:nth-child(5) { top: 70%; left: 60%; animation-delay: 0.3s; }
+
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes explode {
+  0% {
+    box-shadow: 
+      0 0 #ef4444, 0 0 #3b82f6, 0 0 #10b981, 0 0 #f59e0b,
+      0 0 #8b5cf6, 0 0 #ec4899, 0 0 #06b6d4, 0 0 #f43f5e;
+    opacity: 1;
+  }
+  100% {
+    box-shadow: 
+      -100rpx -100rpx #ef4444, 100rpx -100rpx #3b82f6, 
+      100rpx 100rpx #10b981, -100rpx 100rpx #f59e0b,
+      0 -120rpx #8b5cf6, 120rpx 0 #ec4899, 
+      0 120rpx #06b6d4, -120rpx 0 #f43f5e;
+    opacity: 0;
+  }
 }
 
 .points-avatar {

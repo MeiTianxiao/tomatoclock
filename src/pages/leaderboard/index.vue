@@ -149,7 +149,7 @@
               <view v-else class="my-avatar-fallback">{{ userStore.user?.nickname?.slice(0, 1) || '你' }}</view>
             </view>
             <view class="my-user-info">
-              <text v-if="userStore.user?.nickname" class="my-user-name">{{ userStore.user.nickname }}</text>
+              <text v-if="hasRealNickname" class="my-user-name">{{ userStore.user?.nickname }}</text>
               <open-data v-else-if="isWeixinMp" class="my-user-name" type="userNickName" />
               <text v-else class="my-user-name">微信用户</text>
               <text class="my-user-sub">我的排名</text>
@@ -205,6 +205,11 @@ const wxAny = (globalThis as any).wx
 const isWeixinMp = !!wxAny && typeof wxAny.login === 'function'
 
 const currentUserId = computed(() => userStore.user?.id || '')
+const hasRealNickname = computed(() => {
+  const name = userStore.user?.nickname || ''
+  if (!name) return false
+  return !name.startsWith('微信用户')
+})
 const dailyPoints = computed(() => timerStore.dailyPoints)
 const sessions = computed(() => timerStore.sessions)
 
@@ -401,6 +406,8 @@ onMounted(() => {
 .podium-avatar-img {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
+  display: block;
 }
 
 .podium-avatar-fallback {
@@ -539,6 +546,8 @@ onMounted(() => {
 .item-avatar-img {
   width: 100%;
   height: 100%;
+  border-radius: 40rpx;
+  display: block;
 }
 
 .item-avatar-fallback {

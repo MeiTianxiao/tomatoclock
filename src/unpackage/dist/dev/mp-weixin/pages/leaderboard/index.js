@@ -20,6 +20,13 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       var _a;
       return ((_a = userStore.user) == null ? void 0 : _a.id) || "";
     });
+    const hasRealNickname = common_vendor.computed(() => {
+      var _a;
+      const name = ((_a = userStore.user) == null ? void 0 : _a.nickname) || "";
+      if (!name)
+        return false;
+      return !name.startsWith("微信用户");
+    });
     const dailyPoints = common_vendor.computed(() => timerStore.dailyPoints);
     const sessions = common_vendor.computed(() => timerStore.sessions);
     const totalMinutes = common_vendor.computed(() => {
@@ -85,7 +92,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       loadLeaderboard();
     });
     return (_ctx, _cache) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q;
       return common_vendor.e({
         a: activeBoard.value === "all" ? 1 : "",
         b: common_vendor.o(($event) => switchBoard("all"), "7b"),
@@ -166,9 +173,9 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         D: common_vendor.t(((_p = (_o = common_vendor.unref(userStore).user) == null ? void 0 : _o.nickname) == null ? void 0 : _p.slice(0, 1)) || "你")
       }, {
         C: common_vendor.unref(isWeixinMp),
-        E: (_q = common_vendor.unref(userStore).user) == null ? void 0 : _q.nickname
-      }, ((_r = common_vendor.unref(userStore).user) == null ? void 0 : _r.nickname) ? {
-        F: common_vendor.t(common_vendor.unref(userStore).user.nickname)
+        E: hasRealNickname.value
+      }, hasRealNickname.value ? {
+        F: common_vendor.t((_q = common_vendor.unref(userStore).user) == null ? void 0 : _q.nickname)
       } : common_vendor.unref(isWeixinMp) ? {} : {}, {
         G: common_vendor.unref(isWeixinMp),
         H: myRank.value
@@ -178,7 +185,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         J: common_vendor.t(dailyPoints.value),
         K: common_vendor.t(totalMinutes.value),
         L: common_vendor.t(sessions.value.length),
-        M: common_vendor.o(goToFocus, "e9")
+        M: common_vendor.o(goToFocus, "79")
       });
     };
   }

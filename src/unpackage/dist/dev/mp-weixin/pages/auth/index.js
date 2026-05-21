@@ -1,11 +1,16 @@
 "use strict";
 const common_vendor = require("../../common/vendor.js");
 const stores_user = require("../../stores/user.js");
+const defaultAvatarUrl = "https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0";
 const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "index",
   setup(__props) {
     const userStore = stores_user.useUserStore();
     const wechatLoading = common_vendor.ref(false);
+    const profileLoading = common_vendor.ref(false);
+    const needProfile = common_vendor.ref(false);
+    const avatarUrl = common_vendor.ref("");
+    const avatarBase64 = common_vendor.ref("");
     const wxAny = globalThis.wx;
     const isWeixinMp = !!wxAny && typeof wxAny.login === "function";
     function goHome() {
@@ -18,77 +23,101 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         });
       }, 200);
     }
-    async function wechatOneTap() {
-      var _a, _b;
+    function getWechatCode() {
+      return new Promise((resolve, reject) => {
+        var _a;
+        const wxLogin = (_a = globalThis.wx) == null ? void 0 : _a.login;
+        if (typeof wxLogin === "function") {
+          wxLogin({
+            timeout: 1e4,
+            success: (res) => resolve((res == null ? void 0 : res.code) || ""),
+            fail: (err) => reject(err)
+          });
+          return;
+        }
+        common_vendor.index.login({
+          provider: "weixin",
+          success: (res) => resolve((res == null ? void 0 : res.code) || ""),
+          fail: (err) => reject(err)
+        });
+      });
+    }
+    async function handleWechatLogin() {
       if (!isWeixinMp)
         return;
       wechatLoading.value = true;
       try {
-        const profile = await new Promise((resolve, reject) => {
-          var _a2;
-          const wxProfile = (_a2 = globalThis.wx) == null ? void 0 : _a2.getUserProfile;
-          if (typeof wxProfile === "function") {
-            wxProfile({
-              desc: "用于完善头像与昵称",
-              success: (res) => resolve(res),
-              fail: () => resolve(null)
-            });
-            return;
-          }
-          const uniProfile = common_vendor.index.getUserProfile;
-          if (typeof uniProfile === "function") {
-            uniProfile({
-              desc: "用于完善头像与昵称",
-              success: (res) => resolve(res),
-              fail: () => resolve(null)
-            });
-            return;
-          }
-          resolve(null);
-        });
-        const code = await new Promise((resolve, reject) => {
-          var _a2;
-          const wxLogin = (_a2 = globalThis.wx) == null ? void 0 : _a2.login;
-          if (typeof wxLogin === "function") {
-            wxLogin({
-              timeout: 1e4,
-              success: (res) => resolve((res == null ? void 0 : res.code) || ""),
-              fail: (err) => reject(err)
-            });
-            return;
-          }
-          common_vendor.index.login({
-            provider: "weixin",
-            success: (res) => resolve((res == null ? void 0 : res.code) || ""),
-            fail: (err) => reject(err)
-          });
-        });
-        if (!code) {
-          throw new Error("未获取到微信登录 code，请确认在微信小程序环境并已配置正确的接口地址");
+        const code = await getWechatCode();
+        if (!code)
+          throw new Error("未获取到微信登录 code");
+        await userStore.wechatLoginUser({ code });
+        const user = userStore.user;
+        if (user && (!user.avatar_url || user.nickname === "微信用户" || user.avatar_url.includes("thirdwx.qlogo.cn"))) {
+          needProfile.value = true;
+        } else {
+          common_vendor.index.showToast({ title: "登录成功", icon: "success" });
+          goHome();
         }
-        const nickName = (_a = profile == null ? void 0 : profile.userInfo) == null ? void 0 : _a.nickName;
-        const avatarUrl = (_b = profile == null ? void 0 : profile.userInfo) == null ? void 0 : _b.avatarUrl;
-        await userStore.wechatLoginUser({
-          code,
-          nickname: typeof nickName === "string" ? nickName : void 0,
-          avatar_url: typeof avatarUrl === "string" ? avatarUrl : void 0
-        });
-        common_vendor.index.showToast({ title: "微信登录成功", icon: "success" });
-        goHome();
       } catch (error) {
-        common_vendor.index.showToast({ title: (error == null ? void 0 : error.message) || "微信登录失败", icon: "none" });
+        common_vendor.index.showToast({ title: (error == null ? void 0 : error.message) || "登录失败", icon: "none" });
       } finally {
         wechatLoading.value = false;
       }
     }
+    function onChooseAvatar(e) {
+      const tmpUrl = e.detail.avatarUrl;
+      avatarUrl.value = tmpUrl;
+      common_vendor.index.getFileSystemManager().readFile({
+        filePath: tmpUrl,
+        encoding: "base64",
+        success: (res) => {
+          avatarBase64.value = `data:image/jpeg;base64,${res.data}`;
+        },
+        fail: () => {
+          common_vendor.index.showToast({ title: "读取头像失败", icon: "none" });
+        }
+      });
+    }
+    async function onProfileSubmit(e) {
+      const nick = e.detail.value.nickname;
+      if (!avatarBase64.value && !avatarUrl.value) {
+        return common_vendor.index.showToast({ title: "请选择头像", icon: "none" });
+      }
+      if (!nick || nick.trim().length === 0) {
+        return common_vendor.index.showToast({ title: "请输入昵称", icon: "none" });
+      }
+      profileLoading.value = true;
+      try {
+        const code = await getWechatCode();
+        await userStore.wechatLoginUser({
+          code,
+          nickname: nick.trim(),
+          avatar_url: avatarBase64.value || void 0
+        });
+        common_vendor.index.showToast({ title: "设置成功", icon: "success" });
+        goHome();
+      } catch (error) {
+        common_vendor.index.showToast({ title: (error == null ? void 0 : error.message) || "保存失败", icon: "none" });
+      } finally {
+        profileLoading.value = false;
+      }
+    }
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: common_vendor.unref(isWeixinMp)
+        a: !needProfile.value
+      }, !needProfile.value ? common_vendor.e({
+        b: common_vendor.unref(isWeixinMp)
       }, common_vendor.unref(isWeixinMp) ? {
-        b: common_vendor.t(wechatLoading.value ? "微信登录中..." : "微信一键登录"),
-        c: wechatLoading.value,
-        d: common_vendor.o(wechatOneTap, "11")
-      } : {});
+        c: common_vendor.t(wechatLoading.value ? "微信登录中..." : "微信一键登录"),
+        d: wechatLoading.value,
+        e: common_vendor.o(handleWechatLogin, "05")
+      } : {}) : {
+        f: avatarUrl.value || defaultAvatarUrl,
+        g: common_vendor.o(onChooseAvatar, "1b"),
+        h: common_vendor.t(profileLoading.value ? "保存中..." : "完成登录"),
+        i: profileLoading.value,
+        j: common_vendor.o(onProfileSubmit, "25")
+      });
     };
   }
 });

@@ -1,11 +1,17 @@
 "use strict";
 const common_vendor = require("../../common/vendor.js");
 const stores_timer = require("../../stores/timer.js");
+const stores_user = require("../../stores/user.js");
 const types_index = require("../../types/index.js");
 const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "index",
   setup(__props) {
     const timerStore = stores_timer.useTimerStore();
+    const userStore = stores_user.useUserStore();
+    const userAvatar = common_vendor.computed(() => {
+      var _a;
+      return ((_a = userStore.user) == null ? void 0 : _a.avatar_url) || "https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0";
+    });
     const showPromotion = common_vendor.ref(false);
     const promotionData = common_vendor.ref(null);
     let timerInterval = null;
@@ -64,30 +70,32 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         content: "确定要结束当前专注吗？",
         success: (res) => {
           if (res.confirm) {
-            stopFocus();
+            endFocus();
           }
         }
       });
     }
-    function stopFocus() {
+    function endFocus() {
       const result = timerStore.stopFocus();
       if (result) {
         promotionData.value = result;
         showPromotion.value = true;
+      } else {
+        common_vendor.index.switchTab({ url: "/pages/home/index" });
       }
-      common_vendor.index.navigateBack();
     }
     function closePromotion() {
       showPromotion.value = false;
       promotionData.value = null;
-    }
-    function getRankIcon(rank) {
-      var _a;
-      return ((_a = types_index.RANK_CONFIG[rank]) == null ? void 0 : _a.icon) || "👤";
+      common_vendor.index.switchTab({ url: "/pages/home/index" });
     }
     function getRankName(rank) {
       var _a;
       return ((_a = types_index.RANK_CONFIG[rank]) == null ? void 0 : _a.name) || rank;
+    }
+    function getRankAvatar(rank) {
+      var _a;
+      return ((_a = types_index.RANK_CONFIG[rank]) == null ? void 0 : _a.avatar) || userAvatar.value;
     }
     common_vendor.onMounted(() => {
       if (!timerStore.isActive) {
@@ -96,6 +104,9 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }
       timerInterval = setInterval(() => {
         timerStore.tick();
+        if (timeLeft.value === 0 && isActive.value) {
+          endFocus();
+        }
       }, 1e3);
     });
     common_vendor.onUnmounted(() => {
@@ -122,14 +133,18 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         l: common_vendor.o(showStopConfirm, "e4"),
         m: common_vendor.t(currentTip.value),
         n: showPromotion.value && promotionData.value
-      }, showPromotion.value && promotionData.value ? {
-        o: common_vendor.t(getRankIcon(promotionData.value.oldRank)),
-        p: common_vendor.t(getRankName(promotionData.value.oldRank)),
-        q: common_vendor.t(getRankIcon(promotionData.value.newRank)),
-        r: common_vendor.t(getRankName(promotionData.value.newRank)),
-        s: common_vendor.t(promotionData.value.earnedPoints),
-        t: common_vendor.o(closePromotion, "40")
-      } : {});
+      }, showPromotion.value && promotionData.value ? common_vendor.e({
+        o: promotionData.value.wasPromoted
+      }, promotionData.value.wasPromoted ? {
+        p: getRankAvatar(promotionData.value.oldRank),
+        q: common_vendor.t(getRankName(promotionData.value.oldRank)),
+        r: getRankAvatar(promotionData.value.newRank),
+        s: common_vendor.t(getRankName(promotionData.value.newRank)),
+        t: common_vendor.t(getRankName(promotionData.value.newRank))
+      } : {}, {
+        v: common_vendor.t(promotionData.value.earnedPoints),
+        w: common_vendor.o(closePromotion, "1a")
+      }) : {});
     };
   }
 });

@@ -79,20 +79,20 @@
       {
         "pagePath": "pages/leaderboard/index",
         "text": "排行榜",
-        "iconPath": "static/icons/home.png",
-        "selectedIconPath": "static/icons/home.png"
+        "iconPath": "static/icons/leaderboard.png",
+        "selectedIconPath": "static/icons/leaderboard.png"
       },
       {
         "pagePath": "pages/stats/index",
         "text": "统计",
-        "iconPath": "static/icons/home.png",
-        "selectedIconPath": "static/icons/home.png"
+        "iconPath": "static/icons/stats.png",
+        "selectedIconPath": "static/icons/stats.png"
       },
       {
         "pagePath": "pages/settings/index",
         "text": "设置",
-        "iconPath": "static/icons/home.png",
-        "selectedIconPath": "static/icons/home.png"
+        "iconPath": "static/icons/settings.png",
+        "selectedIconPath": "static/icons/settings.png"
       }
     ]
   }

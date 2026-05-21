@@ -9,6 +9,7 @@ if (!Math) {
   "./pages/leaderboard/index.js";
   "./pages/stats/index.js";
   "./pages/settings/index.js";
+  "./pages/friends/index.js";
 }
 const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "App",

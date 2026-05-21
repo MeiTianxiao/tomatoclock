@@ -21,6 +21,13 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       { value: 90, desc: "局长任务" }
     ];
     const user = common_vendor.computed(() => userStore.user);
+    const hasRealNickname = common_vendor.computed(() => {
+      var _a;
+      const name = ((_a = user.value) == null ? void 0 : _a.nickname) || "";
+      if (!name)
+        return false;
+      return !name.startsWith("微信用户");
+    });
     const dailyPoints = common_vendor.computed(() => timerStore.dailyPoints);
     const currentRank = common_vendor.computed(() => timerStore.currentRank);
     const sessions = common_vendor.computed(() => timerStore.sessions);
@@ -62,18 +69,15 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value);
       common_vendor.index.navigateTo({ url: "/pages/timer/index" });
     }
-    function pickCustomDuration() {
-      const options = Array.from({ length: 12 }, (_, i) => (i + 1) * 10);
-      common_vendor.index.showActionSheet({
-        itemList: options.map((v) => `${v} 分钟`),
-        success: (res) => {
-          const picked = options[res.tapIndex];
-          if (picked) {
-            selectedDuration.value = picked;
-            isCustomDuration.value = true;
-          }
-        }
-      });
+    const customValues = Array.from({ length: 12 }, (_, i) => (i + 1) * 10);
+    const customOptions = customValues.map((v) => `${v} 分钟`);
+    function onCustomDurationChange(e) {
+      const index = e.detail.value;
+      const picked = customValues[index];
+      if (picked) {
+        selectedDuration.value = picked;
+        isCustomDuration.value = true;
+      }
     }
     common_vendor.onMounted(() => {
       userStore.loadUser();
@@ -83,7 +87,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }
     });
     return (_ctx, _cache) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i;
       return common_vendor.e({
         a: (_a = user.value) == null ? void 0 : _a.avatar_url
       }, ((_b = user.value) == null ? void 0 : _b.avatar_url) ? {
@@ -93,39 +97,42 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }, {
         c: common_vendor.unref(isWeixinMp),
         e: common_vendor.t(greeting.value),
-        f: (_e = user.value) == null ? void 0 : _e.nickname
-      }, ((_f = user.value) == null ? void 0 : _f.nickname) ? {
-        g: common_vendor.t(user.value.nickname)
+        f: hasRealNickname.value
+      }, hasRealNickname.value ? {
+        g: common_vendor.t((_e = user.value) == null ? void 0 : _e.nickname)
       } : common_vendor.unref(isWeixinMp) ? {} : {}, {
         h: common_vendor.unref(isWeixinMp),
         i: common_vendor.t((totalMinutes.value / 60).toFixed(1)),
-        j: common_vendor.t(((_g = nextRank.value) == null ? void 0 : _g.name) || "已满级"),
-        k: common_vendor.t(pointsToNextRank.value),
-        l: (_h = user.value) == null ? void 0 : _h.avatar_url
-      }, ((_i = user.value) == null ? void 0 : _i.avatar_url) ? {
-        m: user.value.avatar_url
+        j: common_vendor.t(pointsToNextRank.value),
+        k: (_f = user.value) == null ? void 0 : _f.avatar_url
+      }, ((_g = user.value) == null ? void 0 : _g.avatar_url) ? {
+        l: user.value.avatar_url
       } : common_vendor.unref(isWeixinMp) ? {} : {
-        o: common_vendor.t(((_k = (_j = user.value) == null ? void 0 : _j.nickname) == null ? void 0 : _k.slice(0, 1)) || "你")
+        n: common_vendor.t(((_i = (_h = user.value) == null ? void 0 : _h.nickname) == null ? void 0 : _i.slice(0, 1)) || "你")
       }, {
-        n: common_vendor.unref(isWeixinMp),
-        p: common_vendor.t(rankInfo.value.name),
-        q: rankInfo.value.color,
-        r: common_vendor.t(dailyPoints.value),
-        s: common_vendor.t(((_l = nextRank.value) == null ? void 0 : _l.name) || "已满级"),
-        t: common_vendor.t(pointsToNextRank.value),
-        v: progressToNextRank.value + "%",
-        w: rankInfo.value.color,
-        x: common_vendor.f(durationOptions, (duration, k0, i0) => {
+        m: common_vendor.unref(isWeixinMp),
+        o: common_vendor.t(rankInfo.value.name),
+        p: rankInfo.value.color,
+        q: common_vendor.t(dailyPoints.value),
+        r: common_vendor.t(pointsToNextRank.value),
+        s: progressToNextRank.value + "%",
+        t: rankInfo.value.color,
+        v: common_vendor.f(durationOptions, (duration, k0, i0) => {
           return {
             a: common_vendor.t(duration.value),
             b: common_vendor.t(duration.desc),
             c: duration.value,
-            d: selectedDuration.value === duration.value ? 1 : "",
-            e: common_vendor.o(($event) => selectedDuration.value = duration.value, duration.value)
+            d: selectedDuration.value === duration.value && !isCustomDuration.value ? 1 : "",
+            e: common_vendor.o(($event) => {
+              selectedDuration.value = duration.value;
+              isCustomDuration.value = false;
+            }, duration.value)
           };
         }),
-        y: isCustomDuration.value ? 1 : "",
-        z: common_vendor.o(pickCustomDuration, "74"),
+        w: common_vendor.t(isCustomDuration.value ? selectedDuration.value : "10-120"),
+        x: isCustomDuration.value ? 1 : "",
+        y: common_vendor.unref(customOptions),
+        z: common_vendor.o(onCustomDurationChange, "4c"),
         A: common_vendor.f(common_vendor.unref(types_index.CATEGORY_CONFIG), (config, key, i0) => {
           return {
             a: common_vendor.t(config.icon),
@@ -137,10 +144,10 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           };
         }),
         B: selectedMode.value === "gentle" ? 1 : "",
-        C: common_vendor.o(($event) => selectedMode.value = "gentle", "a3"),
+        C: common_vendor.o(($event) => selectedMode.value = "gentle", "41"),
         D: selectedMode.value === "strict" ? 1 : "",
-        E: common_vendor.o(($event) => selectedMode.value = "strict", "1a"),
-        F: common_vendor.o(startFocus, "3c")
+        E: common_vendor.o(($event) => selectedMode.value = "strict", "24"),
+        F: common_vendor.o(startFocus, "c0")
       });
     };
   }

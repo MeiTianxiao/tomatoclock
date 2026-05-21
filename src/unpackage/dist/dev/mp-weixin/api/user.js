@@ -16,7 +16,12 @@ async function bindWeChatPhone(code) {
   const res = await utils_request.post("/wechat/phone", { code });
   return res.data;
 }
+async function getUserInfo() {
+  const res = await utils_request.get("/users/me");
+  return res.data;
+}
 exports.bindWeChatPhone = bindWeChatPhone;
+exports.getUserInfo = getUserInfo;
 exports.login = login;
 exports.register = register;
 exports.wechatLogin = wechatLogin;

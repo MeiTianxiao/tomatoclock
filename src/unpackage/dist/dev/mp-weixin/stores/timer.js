@@ -91,14 +91,12 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
     };
     sessions.value.push(session);
     saveToStorage();
-    if (wasPromoted) {
-      return {
-        oldRank,
-        newRank,
-        earnedPoints: points
-      };
-    }
-    return null;
+    return {
+      oldRank,
+      newRank,
+      earnedPoints: points,
+      wasPromoted
+    };
   }
   function calculateRank() {
     const points = dailyPoints.value;

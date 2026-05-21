@@ -49,22 +49,51 @@
 
     <view v-if="showPromotion && promotionData" class="promotion-overlay">
       <view class="promotion-card">
-        <view class="promotion-icon">🎉</view>
-        <text class="promotion-title">恭喜升级！</text>
-        <view class="promotion-ranks">
-          <view class="rank-item">
-            <text class="rank-icon">{{ getRankIcon(promotionData.oldRank) }}</text>
-            <text class="rank-name">{{ getRankName(promotionData.oldRank) }}</text>
+        <template v-if="promotionData.wasPromoted">
+          <view class="badge-wrapper">
+            <view class="badge">
+              <text class="badge-icon">☆</text>
+              <text class="badge-text">恭喜晋升！</text>
+            </view>
           </view>
-          <text class="arrow">→</text>
-          <view class="rank-item new">
-            <text class="rank-icon">{{ getRankIcon(promotionData.newRank) }}</text>
-            <text class="rank-name">{{ getRankName(promotionData.newRank) }}</text>
+
+          <view class="promotion-avatars">
+            <view class="avatar-item old">
+              <image class="avatar-img grayscale" :src="getRankAvatar(promotionData.oldRank)" mode="aspectFill"></image>
+              <text class="avatar-title">{{ getRankName(promotionData.oldRank) }}</text>
+            </view>
+            
+            <view class="arrow-wrapper">
+              <text class="arrow">→</text>
+            </view>
+            
+            <view class="avatar-item new">
+              <image class="avatar-img highlighted" :src="getRankAvatar(promotionData.newRank)" mode="aspectFill"></image>
+              <text class="avatar-title highlighted-text">{{ getRankName(promotionData.newRank) }}</text>
+            </view>
           </view>
+
+          <view class="promotion-texts">
+            <text class="title-main">恭喜您成为 <text class="highlighted-text">{{ getRankName(promotionData.newRank) }}</text>！</text>
+            <text class="title-sub">您的努力得到了回报，继续保持专注！</text>
+          </view>
+        </template>
+        
+        <template v-else>
+          <view class="promotion-texts" style="margin-top: 40rpx; margin-bottom: 40rpx;">
+            <text class="title-main">专注完成！</text>
+            <text class="title-sub">您已成功完成本次专注，继续保持！</text>
+          </view>
+        </template>
+
+        <view class="points-card">
+          <text class="points-label">本次获得</text>
+          <text class="points-value">+{{ promotionData.earnedPoints }}</text>
+          <text class="points-unit">积分</text>
         </view>
-        <text class="promotion-points">获得 {{ promotionData.earnedPoints }} 积分</text>
+
         <button class="btn btn-primary btn-block" @click="closePromotion">
-          太棒了！
+          继续加油！
         </button>
       </view>
     </view>
@@ -74,13 +103,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useTimerStore } from '@/stores/timer'
+import { useUserStore } from '@/stores/user'
 import { RANK_CONFIG, CATEGORY_CONFIG, type FocusCategory } from '@/types'
 
 const timerStore = useTimerStore()
+const userStore = useUserStore()
+
+const userAvatar = computed(() => {
+  return userStore.user?.avatar_url || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
+})
 
 const showPromotion = ref(false)
-const promotionData = ref<{ oldRank: string; newRank: string; earnedPoints: number } | null>(null)
-
+const promotionData = ref<{ oldRank: string; newRank: string; earnedPoints: number; wasPromoted: boolean } | null>(null)
 let timerInterval: number | null = null
 
 const isActive = computed(() => timerStore.isActive)
@@ -146,24 +180,26 @@ function showStopConfirm() {
     content: '确定要结束当前专注吗？',
     success: (res) => {
       if (res.confirm) {
-        stopFocus()
+        endFocus()
       }
     }
   })
 }
 
-function stopFocus() {
+function endFocus() {
   const result = timerStore.stopFocus()
   if (result) {
     promotionData.value = result
     showPromotion.value = true
+  } else {
+    uni.switchTab({ url: '/pages/home/index' })
   }
-  uni.navigateBack()
 }
 
 function closePromotion() {
   showPromotion.value = false
   promotionData.value = null
+  uni.switchTab({ url: '/pages/home/index' })
 }
 
 function getRankIcon(rank: string) {
@@ -174,6 +210,10 @@ function getRankName(rank: string) {
   return RANK_CONFIG[rank as keyof typeof RANK_CONFIG]?.name || rank
 }
 
+function getRankAvatar(rank: string) {
+  return RANK_CONFIG[rank as keyof typeof RANK_CONFIG]?.avatar || userAvatar.value
+}
+
 onMounted(() => {
   if (!timerStore.isActive) {
     uni.navigateBack()
@@ -182,6 +222,9 @@ onMounted(() => {
 
   timerInterval = setInterval(() => {
     timerStore.tick()
+    if (timeLeft.value === 0 && isActive.value) {
+      endFocus()
+    }
   }, 1000) as unknown as number
 })
 
@@ -386,10 +429,12 @@ onUnmounted(() => {
 .promotion-card {
   background: #fff;
   border-radius: 32rpx;
-  padding: 48rpx;
+  padding: 60rpx 48rpx;
   margin: 40rpx;
+  width: 600rpx;
   text-align: center;
   animation: bounce 0.5s ease;
+  box-sizing: border-box;
 }
 
 @keyframes bounce {
@@ -398,60 +443,136 @@ onUnmounted(() => {
   100% { transform: scale(1); opacity: 1; }
 }
 
-.promotion-icon {
-  font-size: 80rpx;
-  margin-bottom: 24rpx;
+.badge-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 50rpx;
 }
 
-.promotion-title {
+.badge {
+  background: rgba(34, 197, 94, 0.1);
+  padding: 12rpx 32rpx;
+  border-radius: 40rpx;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.badge-icon, .badge-text {
+  color: #16a34a;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.promotion-avatars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 50rpx;
+}
+
+.avatar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.avatar-img {
+  border-radius: 50%;
+  display: block;
+}
+
+.avatar-item.old .avatar-img {
+  width: 120rpx;
+  height: 120rpx;
+  border: 4rpx solid #e5e7eb;
+  filter: grayscale(100%);
+  margin-bottom: 16rpx;
+}
+
+.avatar-item.new .avatar-img {
+  width: 160rpx;
+  height: 160rpx;
+  border: 6rpx solid #3b82f6;
+  box-shadow: 0 0 30rpx rgba(59, 130, 246, 0.3);
+  margin-bottom: 16rpx;
+}
+
+.avatar-title {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+.highlighted-text {
+  color: #3b82f6 !important;
+  font-weight: 700;
+}
+
+.arrow-wrapper {
+  margin: 0 40rpx;
+  margin-bottom: 40rpx;
+}
+
+.arrow {
+  font-size: 40rpx;
+  color: #9ca3af;
+}
+
+.promotion-texts {
+  margin-bottom: 40rpx;
+}
+
+.title-main {
   font-size: 36rpx;
   font-weight: 700;
   color: #1f2937;
   display: block;
-  margin-bottom: 32rpx;
+  margin-bottom: 16rpx;
 }
 
-.promotion-ranks {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 24rpx;
-  margin-bottom: 32rpx;
-}
-
-.rank-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20rpx 32rpx;
-  background: #f3f4f6;
-  border-radius: 16rpx;
-  
-  &.new {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  }
-}
-
-.rank-icon {
-  font-size: 48rpx;
-}
-
-.rank-name {
+.title-sub {
   font-size: 26rpx;
-  color: #4b5563;
-  margin-top: 8rpx;
-}
-
-.arrow {
-  font-size: 36rpx;
-  color: #9ca3af;
-}
-
-.promotion-points {
-  font-size: 28rpx;
-  color: #f59e0b;
-  font-weight: 600;
+  color: #6b7280;
   display: block;
-  margin-bottom: 32rpx;
+}
+
+.points-card {
+  background: #f8fafc;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 40rpx;
+}
+
+.points-label {
+  font-size: 24rpx;
+  color: #6b7280;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.points-value {
+  font-size: 64rpx;
+  font-weight: 800;
+  color: #8b5cf6;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.points-unit {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: #fff;
+  border-radius: 48rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  height: 96rpx;
+  line-height: 96rpx;
+  border: none;
+  &::after { display: none; }
+  &:active { transform: scale(0.98); }
 }
 </style>

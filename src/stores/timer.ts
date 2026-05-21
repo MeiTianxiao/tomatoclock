@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { SessionRecord, FocusCategory, RankType, PromotionData } from '@/types'
 import { RANK_CONFIG } from '@/types'
+import { syncFocusEnd } from '@/api/user'
 
 const RANK_ORDER: RankType[] = ['intern', 'junior', 'middle', 'senior', 'expert', 'master']
 
@@ -76,7 +77,7 @@ export const useTimerStore = defineStore('timer', () => {
     isPaused.value = false
   }
 
-  function stopFocus(): PromotionData | null {
+  function stopFocus(): PromotionData & { wasPromoted: boolean } | null {
     isActive.value = false
     isPaused.value = false
     
@@ -106,15 +107,19 @@ export const useTimerStore = defineStore('timer', () => {
     sessions.value.push(session)
     saveToStorage()
 
-    if (wasPromoted) {
-      return {
-        oldRank,
-        newRank,
-        earnedPoints: points
-      }
-    }
+    // 异步同步到后端，确保排行榜数据能实时更新
+    syncFocusEnd({
+      duration_minutes: minutes,
+      points: points,
+      rank_after: newRank
+    }).catch(console.error)
 
-    return null
+    return {
+      oldRank,
+      newRank,
+      earnedPoints: points,
+      wasPromoted
+    }
   }
 
   function calculateRank(): RankType {

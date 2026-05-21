@@ -11,7 +11,7 @@
         <text v-else>{{ rankIcon }}</text>
       </view>
       <view class="user-info">
-        <text v-if="user?.nickname" class="user-name">{{ user.nickname }}</text>
+        <text v-if="hasRealNickname" class="user-name">{{ user?.nickname }}</text>
         <open-data v-else-if="isWeixinMp" class="user-name" type="userNickName" />
         <text v-else class="user-name">微信用户</text>
         <text class="user-rank">{{ rankName }}</text>
@@ -61,18 +61,6 @@
 
       <view class="setting-item">
         <view class="setting-left">
-          <text class="setting-icon">🌙</text>
-          <text class="setting-label">深色模式</text>
-        </view>
-        <switch
-          :checked="settings.darkMode"
-          @change="toggleSetting('darkMode')"
-          color="#3b82f6"
-        />
-      </view>
-
-      <view class="setting-item">
-        <view class="setting-left">
           <text class="setting-icon">🔒</text>
           <text class="setting-label">隐私模式</text>
         </view>
@@ -87,47 +75,18 @@
     <view class="settings-section">
       <view class="section-title">专注设置</view>
       
-      <view class="setting-item" @click="showGoalSettings">
-        <view class="setting-left">
-          <text class="setting-icon">🎯</text>
-          <text class="setting-label">每日目标</text>
+      <picker mode="selector" :range="goalOptions" @change="onGoalChange">
+        <view class="setting-item">
+          <view class="setting-left">
+            <text class="setting-icon">🎯</text>
+            <text class="setting-label">每日目标</text>
+          </view>
+          <view class="setting-right">
+            <text class="setting-value">{{ settings.dailyGoal }}分钟</text>
+            <text class="setting-arrow">›</text>
+          </view>
         </view>
-        <view class="setting-right">
-          <text class="setting-value">{{ settings.dailyGoal }}分钟</text>
-          <text class="setting-arrow">›</text>
-        </view>
-      </view>
-
-      <view class="setting-item" @click="showThemeSettings">
-        <view class="setting-left">
-          <text class="setting-icon">🎨</text>
-          <text class="setting-label">主题样式</text>
-        </view>
-        <view class="setting-right">
-          <text class="setting-value">{{ themeNames[settings.theme] }}</text>
-          <text class="setting-arrow">›</text>
-        </view>
-      </view>
-    </view>
-
-    <view class="settings-section">
-      <view class="section-title">数据管理</view>
-      
-      <view class="setting-item" @click="exportData">
-        <view class="setting-left">
-          <text class="setting-icon">📤</text>
-          <text class="setting-label">导出数据</text>
-        </view>
-        <text class="setting-arrow">›</text>
-      </view>
-
-      <view class="setting-item" @click="clearData">
-        <view class="setting-left">
-          <text class="setting-icon">🗑️</text>
-          <text class="setting-label">清空数据</text>
-        </view>
-        <text class="setting-arrow">›</text>
-      </view>
+      </picker>
     </view>
 
     <view class="settings-section">
@@ -192,6 +151,11 @@ const themeNames: Record<string, string> = {
 }
 
 const user = computed(() => userStore.user)
+const hasRealNickname = computed(() => {
+  const name = user.value?.nickname || ''
+  if (!name) return false
+  return !name.startsWith('微信用户')
+})
 
 const rankInfo = computed(() => {
   const points = parseInt(uni.getStorageSync('timer')?.dailyPoints || '0') || 0
@@ -224,7 +188,19 @@ function loadSettings() {
       settings.value = JSON.parse(stored)
     } catch {
       // ignore
-    }
+  }
+}
+
+const goalValues = Array.from({ length: 12 }, (_, i) => (i + 1) * 30)
+const goalOptions = goalValues.map(v => `${v} 分钟`)
+
+function onGoalChange(e: any) {
+  const index = e.detail.value
+  const picked = goalValues[index]
+  if (picked) {
+    settings.value.dailyGoal = picked
+    saveSettings()
+    uni.showToast({ title: '设置成功', icon: 'success' })
   }
 }
 
@@ -334,6 +310,16 @@ onMounted(() => {
   justify-content: center;
   font-size: 48rpx;
   margin-right: 24rpx;
+  overflow: hidden;
+  flex-shrink: 0;
+
+  .user-avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: block;
+    object-fit: cover;
+  }
 }
 
 .user-info {

@@ -591,6 +591,73 @@ app.get('/api/users/me', async (req, res) => {
   res.json({ code: 200, message: 'success', data: user });
 });
 
+app.post('/api/focus/end', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ code: 401, message: '未登录' });
+
+  const { duration_minutes, points, rank_after } = req.body;
+  if (typeof duration_minutes !== 'number' || typeof points !== 'number') {
+    return res.status(400).json({ code: 400, message: '参数错误' });
+  }
+
+  if (supabase) {
+    try {
+      const weekStart = getWeekStart();
+      const { data: stats, error: statsError } = await supabase
+        .from('weekly_stats')
+        .select('*')
+        .eq('user_id', token)
+        .eq('week_start', weekStart)
+        .maybeSingle();
+
+      if (statsError) throw statsError;
+
+      if (stats) {
+        const newTotalMinutes = stats.total_minutes + duration_minutes;
+        const newTotalPoints = stats.total_points + points;
+        const newSessionsCompleted = stats.sessions_completed + 1;
+        const newRank = rank_after || stats.current_rank;
+
+        await supabase
+          .from('weekly_stats')
+          .update({
+            total_minutes: newTotalMinutes,
+            total_points: newTotalPoints,
+            current_rank: newRank,
+            sessions_completed: newSessionsCompleted
+          })
+          .eq('id', stats.id);
+      } else {
+        await supabase
+          .from('weekly_stats')
+          .insert({
+            user_id: token,
+            week_start: weekStart,
+            week_end: getWeekEnd(),
+            total_minutes: duration_minutes,
+            total_points: points,
+            current_rank: rank_after || 'intern',
+            highest_rank: rank_after || 'intern',
+            sessions_completed: 1
+          });
+      }
+
+      await supabase.rpc('increment_user_stats', {
+        x_user_id: token,
+        x_minutes: duration_minutes,
+        x_sessions: 1
+      });
+
+      return res.json({ code: 200, message: '记录成功' });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ code: 500, message: '服务异常' });
+    }
+  }
+
+  return res.json({ code: 200, message: '本地已忽略同步' });
+});
+
 app.post('/api/friends/invite', async (req, res) => {
   const token = getToken(req);
   const { invite_code } = req.body || {};

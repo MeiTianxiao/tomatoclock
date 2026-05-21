@@ -15,13 +15,14 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       dailyGoal: 120,
       theme: "business"
     });
-    const themeNames = {
-      business: "商务蓝",
-      nature: "自然绿",
-      sunset: "日落橙",
-      ocean: "海洋蓝"
-    };
     const user = common_vendor.computed(() => userStore.user);
+    const hasRealNickname = common_vendor.computed(() => {
+      var _a;
+      const name = ((_a = user.value) == null ? void 0 : _a.nickname) || "";
+      if (!name)
+        return false;
+      return !name.startsWith("微信用户");
+    });
     const rankInfo = common_vendor.computed(() => {
       var _a;
       const points = parseInt(((_a = common_vendor.index.getStorageSync("timer")) == null ? void 0 : _a.dailyPoints) || "0") || 0;
@@ -66,25 +67,6 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     function showGoalSettings() {
       common_vendor.index.showToast({ title: "功能开发中", icon: "none" });
     }
-    function showThemeSettings() {
-      common_vendor.index.showToast({ title: "功能开发中", icon: "none" });
-    }
-    function exportData() {
-      common_vendor.index.showToast({ title: "功能开发中", icon: "none" });
-    }
-    function clearData() {
-      common_vendor.index.showModal({
-        title: "确认清空",
-        content: "确定要清空所有数据吗？此操作不可恢复。",
-        success: (res) => {
-          if (res.confirm) {
-            common_vendor.index.removeStorageSync("timer");
-            common_vendor.index.removeStorageSync("app-settings");
-            common_vendor.index.showToast({ title: "数据已清空", icon: "success" });
-          }
-        }
-      });
-    }
     function showAbout() {
       common_vendor.index.showModal({
         title: "关于应用",
@@ -115,7 +97,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }
     });
     return (_ctx, _cache) => {
-      var _a, _b, _c, _d;
+      var _a, _b, _c;
       return common_vendor.e({
         a: (_a = user.value) == null ? void 0 : _a.avatar_url
       }, ((_b = user.value) == null ? void 0 : _b.avatar_url) ? {
@@ -125,31 +107,25 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }, {
         c: common_vendor.unref(isWeixinMp),
         e: rankColor.value,
-        f: (_c = user.value) == null ? void 0 : _c.nickname
-      }, ((_d = user.value) == null ? void 0 : _d.nickname) ? {
-        g: common_vendor.t(user.value.nickname)
+        f: hasRealNickname.value
+      }, hasRealNickname.value ? {
+        g: common_vendor.t((_c = user.value) == null ? void 0 : _c.nickname)
       } : common_vendor.unref(isWeixinMp) ? {} : {}, {
         h: common_vendor.unref(isWeixinMp),
         i: common_vendor.t(rankName.value),
-        j: common_vendor.o(editProfile, "da"),
-        k: common_vendor.o(goFriends, "4b"),
+        j: common_vendor.o(editProfile, "b2"),
+        k: common_vendor.o(goFriends, "c2"),
         l: settings.value.notifications,
-        m: common_vendor.o(($event) => toggleSetting("notifications"), "bd"),
+        m: common_vendor.o(($event) => toggleSetting("notifications"), "00"),
         n: settings.value.soundEnabled,
-        o: common_vendor.o(($event) => toggleSetting("soundEnabled"), "43"),
-        p: settings.value.darkMode,
-        q: common_vendor.o(($event) => toggleSetting("darkMode"), "d6"),
-        r: settings.value.privacyMode,
-        s: common_vendor.o(($event) => toggleSetting("privacyMode"), "30"),
-        t: common_vendor.t(settings.value.dailyGoal),
-        v: common_vendor.o(showGoalSettings, "2b"),
-        w: common_vendor.t(themeNames[settings.value.theme]),
-        x: common_vendor.o(showThemeSettings, "5a"),
-        y: common_vendor.o(exportData, "32"),
-        z: common_vendor.o(clearData, "18"),
-        A: common_vendor.o(showAbout, "b0"),
-        B: common_vendor.o(showFeedback, "22"),
-        C: common_vendor.o(handleLogout, "c0")
+        o: common_vendor.o(($event) => toggleSetting("soundEnabled"), "bd"),
+        p: settings.value.privacyMode,
+        q: common_vendor.o(($event) => toggleSetting("privacyMode"), "20"),
+        r: common_vendor.t(settings.value.dailyGoal),
+        s: common_vendor.o(showGoalSettings, "67"),
+        t: common_vendor.o(showAbout, "44"),
+        v: common_vendor.o(showFeedback, "7c"),
+        w: common_vendor.o(handleLogout, "f6")
       });
     };
   }

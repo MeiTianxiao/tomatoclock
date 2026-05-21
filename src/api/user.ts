@@ -31,7 +31,7 @@ export async function getWeeklyStats(userId: string): Promise<WeeklyStats> {
   return res.data
 }
 
-export async function updateUser(data: Partial<User>): Promise<User> {
-  const res = await post('/users/update', data)
+export async function syncFocusEnd(data: { duration_minutes: number; points: number; rank_after: string }) {
+  const res = await post('/focus/end', data)
   return res.data
 }
