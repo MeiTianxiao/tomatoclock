@@ -15,6 +15,27 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
   const targetTime = common_vendor.ref(0);
   const currentCategory = common_vendor.ref("study");
   const currentMode = common_vendor.ref("strict");
+  function getWeekStartTs() {
+    const now = /* @__PURE__ */ new Date();
+    const dayOfWeek = now.getDay();
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday.getTime();
+  }
+  function getLocalWeekSummary() {
+    const weekStartTs = getWeekStartTs();
+    const weekSessions = sessions.value.filter((s) => s.completed && (s.startTime || 0) >= weekStartTs);
+    const totalMinutes = weekSessions.reduce((sum, s) => sum + (s.duration || 0), 0);
+    const totalPoints = weekSessions.reduce((sum, s) => sum + (s.points || 0), 0);
+    return { totalMinutes, totalPoints };
+  }
+  function recalcFromSessions() {
+    const { totalPoints } = getLocalWeekSummary();
+    dailyPoints.value = totalPoints;
+    currentRank.value = calculateRank();
+  }
   const nextRank = common_vendor.computed(() => {
     const currentIndex = RANK_ORDER.indexOf(currentRank.value);
     if (currentIndex >= RANK_ORDER.length - 1)
@@ -43,6 +64,7 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
         dailyPoints.value = data.dailyPoints || 0;
         currentRank.value = data.currentRank || "intern";
         sessions.value = data.sessions || [];
+        recalcFromSessions();
       } catch {
         resetDaily();
       }
@@ -138,21 +160,31 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
     try {
       const stats = await api_user.getWeeklyStats(userStore.user.id);
       if (stats) {
-        let changed = false;
-        if (stats.total_points !== void 0 && stats.total_points !== dailyPoints.value) {
-          dailyPoints.value = stats.total_points;
-          changed = true;
+        const local = getLocalWeekSummary();
+        const serverPoints = stats.total_points || 0;
+        const serverMinutes = stats.total_minutes || 0;
+        if (local.totalPoints > serverPoints || local.totalMinutes > serverMinutes) {
+          const deltaPoints = Math.max(0, local.totalPoints - serverPoints);
+          const deltaMinutes = Math.max(0, local.totalMinutes - serverMinutes);
+          if (deltaPoints > 0 || deltaMinutes > 0) {
+            await api_user.syncFocusEnd({
+              duration_minutes: deltaMinutes,
+              points: deltaPoints,
+              rank_after: currentRank.value
+            });
+          }
         }
-        if (stats.current_rank && stats.current_rank !== currentRank.value) {
-          currentRank.value = stats.current_rank;
-          changed = true;
-        }
-        if (changed) {
+        const latest = await api_user.getWeeklyStats(userStore.user.id);
+        if (latest) {
+          dailyPoints.value = latest.total_points || 0;
+          if (latest.current_rank) {
+            currentRank.value = latest.current_rank;
+          }
           saveToStorage();
         }
       }
     } catch (e) {
-      common_vendor.index.__f__("error", "at stores/timer.ts:175", "Sync failed:", e);
+      common_vendor.index.__f__("error", "at stores/timer.ts:212", "Sync failed:", e);
     }
   }
   return {

@@ -92,6 +92,11 @@
           <text class="points-unit">积分</text>
         </view>
 
+        <view v-if="todoFinish" class="todo-finish-card">
+          <text class="todo-finish-title">{{ todoFinish.title }}</text>
+          <text class="todo-finish-meta">本次完成用时 {{ formatSeconds(todoFinish.seconds) }}</text>
+        </view>
+
         <button class="btn btn-primary btn-block" @click="closePromotion">
           继续加油！
         </button>
@@ -104,10 +109,12 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useTimerStore } from '@/stores/timer'
 import { useUserStore } from '@/stores/user'
+import { useTodoStore } from '@/stores/todo'
 import { RANK_CONFIG, CATEGORY_CONFIG, type FocusCategory } from '@/types'
 
 const timerStore = useTimerStore()
 const userStore = useUserStore()
+const todoStore = useTodoStore()
 
 const userAvatar = computed(() => {
   return userStore.user?.avatar_url || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
@@ -115,16 +122,18 @@ const userAvatar = computed(() => {
 
 const showPromotion = ref(false)
 const promotionData = ref<{ oldRank: string; newRank: string; earnedPoints: number; wasPromoted: boolean } | null>(null)
+const todoFinish = ref<{ title: string; seconds: number } | null>(null)
 let timerInterval: number | null = null
 let audioCtx: any = null
 
 const SOUND_URLS: Record<string, string> = {
-  rain: 'https://cdn.pixabay.com/download/audio/2021/08/09/audio_145b23d9df.mp3',
-  wave: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_73bb85e926.mp3',
-  bird: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3'
+  rain: '/static/audio/rain.mp3',
+  wave: '/static/audio/wave.mp3',
+  bird: '/static/audio/bird.mp3'
 }
 
 function initAudio() {
+  stopAudio()
   const settingsStr = uni.getStorageSync('app-settings')
   if (settingsStr) {
     try {
@@ -133,9 +142,39 @@ function initAudio() {
         const url = SOUND_URLS[settings.soundType]
         if (url) {
           audioCtx = uni.createInnerAudioContext()
-          audioCtx.src = url
           audioCtx.loop = true
-          audioCtx.play()
+          if (typeof audioCtx.onError === 'function') {
+            audioCtx.onError(() => {
+              stopAudio()
+              uni.showToast({ title: '白噪音播放失败，请检查音频文件', icon: 'none' })
+            })
+          }
+
+          const playSrc = (src: string) => {
+            if (!audioCtx) return
+            audioCtx.src = src
+            audioCtx.play()
+          }
+
+          if (/^https?:\/\//.test(url)) {
+            uni.downloadFile({
+              url,
+              success: (res) => {
+                if (res.statusCode === 200 && (res as any).tempFilePath) {
+                  playSrc((res as any).tempFilePath)
+                } else {
+                  stopAudio()
+                  uni.showToast({ title: '白噪音下载失败', icon: 'none' })
+                }
+              },
+              fail: () => {
+                stopAudio()
+                uni.showToast({ title: '白噪音下载失败', icon: 'none' })
+              }
+            })
+          } else {
+            playSrc(url)
+          }
         }
       }
     } catch (e) {}
@@ -227,19 +266,40 @@ function showStopConfirm() {
 
 function endFocus() {
   stopAudio()
+  const elapsedSeconds = Math.max(0, totalDuration.value - timeLeft.value)
+  const finished = todoStore.finishActiveFocus(elapsedSeconds)
+  todoFinish.value = finished ? { title: finished.title, seconds: finished.seconds } : null
   const result = timerStore.stopFocus()
   if (result) {
     promotionData.value = result
     showPromotion.value = true
   } else {
-    uni.switchTab({ url: '/pages/home/index' })
+    if (todoFinish.value) {
+      promotionData.value = {
+        oldRank: currentRank.value,
+        newRank: currentRank.value,
+        earnedPoints: 0,
+        wasPromoted: false
+      }
+      showPromotion.value = true
+    } else {
+      uni.switchTab({ url: '/pages/home/index' })
+    }
   }
 }
 
 function closePromotion() {
   showPromotion.value = false
   promotionData.value = null
+  todoFinish.value = null
   uni.switchTab({ url: '/pages/home/index' })
+}
+
+function formatSeconds(totalSeconds: number) {
+  const s = Math.max(0, Math.floor(totalSeconds || 0))
+  const mm = Math.floor(s / 60)
+  const ss = s % 60
+  return `${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`
 }
 
 function getRankIcon(rank: string) {
@@ -584,6 +644,27 @@ onUnmounted(() => {
   border-radius: 24rpx;
   padding: 32rpx;
   margin-bottom: 40rpx;
+}
+
+.todo-finish-card {
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 40rpx;
+}
+
+.todo-finish-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #0f172a;
+  display: block;
+}
+
+.todo-finish-meta {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #475569;
+  display: block;
 }
 
 .points-label {

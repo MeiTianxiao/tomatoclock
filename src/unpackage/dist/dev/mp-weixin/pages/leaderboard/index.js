@@ -14,6 +14,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const activeBoard = common_vendor.ref("all");
     const friendLeaderboard = common_vendor.ref([]);
     const friendLoading = common_vendor.ref(false);
+    let refreshTimer = null;
     const wxAny = globalThis.wx;
     const isWeixinMp = !!wxAny && typeof wxAny.login === "function";
     const currentUserId = common_vendor.computed(() => {
@@ -48,24 +49,26 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       var _a;
       return ((_a = types_index.RANK_CONFIG[rank]) == null ? void 0 : _a.name) || rank;
     }
-    async function loadLeaderboard() {
+    async function loadLeaderboard(silent = false) {
       loading.value = true;
       try {
         const data = await api_leaderboard.getLeaderboard(20);
         leaderboard.value = data;
       } catch (error) {
-        common_vendor.index.showToast({ title: "加载排行榜失败", icon: "none" });
+        if (!silent)
+          common_vendor.index.showToast({ title: "加载排行榜失败", icon: "none" });
       } finally {
         loading.value = false;
       }
     }
-    async function loadFriendBoard() {
+    async function loadFriendBoard(silent = false) {
       friendLoading.value = true;
       try {
         const data = await api_leaderboard.getFriendLeaderboard(50);
         friendLeaderboard.value = data;
       } catch (error) {
-        common_vendor.index.showToast({ title: "加载好友榜失败", icon: "none" });
+        if (!silent)
+          common_vendor.index.showToast({ title: "加载好友榜失败", icon: "none" });
       } finally {
         friendLoading.value = false;
       }
@@ -99,6 +102,23 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         } else {
           loadFriendBoard();
         }
+        if (refreshTimer)
+          clearInterval(refreshTimer);
+        refreshTimer = setInterval(() => {
+          if (!userStore.isLoggedIn)
+            return;
+          if (activeBoard.value === "all") {
+            loadLeaderboard(true);
+          } else {
+            loadFriendBoard(true);
+          }
+        }, 5e3);
+      }
+    });
+    common_vendor.onHide(() => {
+      if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
       }
     });
     return (_ctx, _cache) => {

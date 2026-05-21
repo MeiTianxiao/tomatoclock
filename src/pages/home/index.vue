@@ -103,6 +103,10 @@
         <button class="study-room-btn" @click="goStudyRoom">双人自习室</button>
       </view>
     </view>
+
+    <view class="todo-section">
+      <TodoChecklist :duration="selectedDuration" :category="selectedCategory" :mode="selectedMode" />
+    </view>
   </view>
 </template>
 
@@ -111,10 +115,13 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { useTimerStore } from '@/stores/timer'
+import { useTodoStore } from '@/stores/todo'
 import { RANK_CONFIG, CATEGORY_CONFIG, type FocusCategory } from '@/types'
+import TodoChecklist from '@/components/TodoChecklist.vue'
 
 const userStore = useUserStore()
 const timerStore = useTimerStore()
+const todoStore = useTodoStore()
 const isWeixinMp = !!(globalThis as any).wx && typeof (globalThis as any).wx.getAccountInfoSync === 'function'
 
 const showFireworks = ref(false)
@@ -189,6 +196,7 @@ function getCategoryName(category: FocusCategory) {
 }
 
 function startFocus() {
+  todoStore.clearActiveFocus()
   if (isWeixinMp) {
     uni.requestSubscribeMessage({
       tmplIds: ['Q_caCI_KtwEuo1xG8JgyUU4pkdVHsnN4JUsZFB52uTo'],
@@ -222,6 +230,7 @@ function onCustomDurationChange(e: any) {
 onMounted(() => {
   userStore.loadUser()
   timerStore.loadFromStorage()
+  todoStore.loadFromStorage()
   
   if (!userStore.isLoggedIn) {
     uni.navigateTo({ url: '/pages/auth/index' })
@@ -271,6 +280,10 @@ function checkDailyGoal() {
   border-radius: 28rpx;
   padding: 32rpx;
   box-shadow: 0 18rpx 60rpx rgba(15, 23, 42, 0.08);
+  margin-bottom: 28rpx;
+}
+
+.todo-section {
   margin-bottom: 28rpx;
 }
 

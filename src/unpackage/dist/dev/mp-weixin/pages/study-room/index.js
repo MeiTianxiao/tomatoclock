@@ -14,21 +14,33 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const members = common_vendor.ref([]);
     let pingTimer = null;
     let joinTime = 0;
-    function generateRoomCode() {
-      return Math.random().toString(36).substring(2, 8).toUpperCase();
-    }
     async function createRoom() {
-      roomCode.value = generateRoomCode();
-      await joinRoom();
+      loading.value = true;
+      try {
+        const res = await utils_request.post("/study-room/join", {});
+        if (res.code === 200) {
+          currentRoom.value = res.data.code;
+          members.value = res.data.members || [];
+          inRoom.value = true;
+          joinTime = Date.now();
+          startPing();
+          common_vendor.index.showToast({ title: "已创建自习室", icon: "success" });
+        }
+      } catch (e) {
+        common_vendor.index.showToast({ title: e.message || "创建失败", icon: "none" });
+      } finally {
+        loading.value = false;
+      }
     }
     async function joinRoom() {
       if (!roomCode.value)
         return common_vendor.index.showToast({ title: "请输入验证码", icon: "none" });
       loading.value = true;
       try {
-        const res = await utils_request.post("/study-room/join", { room_code: roomCode.value.toUpperCase() });
+        const res = await utils_request.post("/study-room/join", { code: roomCode.value.toUpperCase() });
         if (res.code === 200) {
-          currentRoom.value = roomCode.value.toUpperCase();
+          currentRoom.value = res.data.code;
+          members.value = res.data.members || [];
           inRoom.value = true;
           joinTime = Date.now();
           startPing();
@@ -46,16 +58,21 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       try {
         const res = await utils_request.get(`/study-room/${currentRoom.value}`);
         if (res.data) {
-          members.value = res.data;
+          members.value = res.data.members || [];
         }
       } catch (e) {
       }
     }
     async function ping() {
+      var _a;
       if (!inRoom.value)
         return;
       try {
-        await utils_request.post("/study-room/ping", { room_code: currentRoom.value });
+        const res = await utils_request.post("/study-room/ping", { code: currentRoom.value });
+        if ((_a = res.data) == null ? void 0 : _a.members) {
+          members.value = res.data.members;
+          return;
+        }
         fetchMembers();
       } catch (e) {
       }
@@ -86,7 +103,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             const durationMinutes = Math.floor((Date.now() - joinTime) / 6e4);
             const points = Math.floor(durationMinutes * 1.5);
             try {
-              await utils_request.post("/study-room/leave", { room_code: currentRoom.value });
+              await utils_request.post("/study-room/leave", { code: currentRoom.value });
             } catch (e) {
             }
             inRoom.value = false;
@@ -108,7 +125,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     common_vendor.onUnmounted(() => {
       stopPing();
       if (inRoom.value) {
-        utils_request.post("/study-room/leave", { room_code: currentRoom.value }).catch(() => {
+        utils_request.post("/study-room/leave", { code: currentRoom.value }).catch(() => {
         });
       }
     });

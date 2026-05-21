@@ -1497,8 +1497,8 @@ app.post('/api/study-room/join', async (req, res) => {
   const token = getToken(req);
   if (!token) return res.status(401).json({ code: 401, message: '未登录' });
 
-  const { code } = req.body; // 房间验证码
-  let roomCode = code;
+  const roomCodeFromBody = req.body?.code || req.body?.room_code;
+  let roomCode = roomCodeFromBody;
 
   // 获取用户信息
   let user = null;
@@ -1548,8 +1548,8 @@ app.post('/api/study-room/ping', async (req, res) => {
   const token = getToken(req);
   if (!token) return res.status(401).json({ code: 401, message: '未登录' });
 
-  const { code } = req.body;
-  const room = studyRooms.get(code);
+  const roomCode = req.body?.code || req.body?.room_code;
+  const room = studyRooms.get(roomCode);
   if (!room) {
     return res.status(404).json({ code: 404, message: '自习室不存在或已关闭' });
   }
@@ -1578,12 +1578,12 @@ app.post('/api/study-room/leave', async (req, res) => {
   const token = getToken(req);
   if (!token) return res.status(401).json({ code: 401, message: '未登录' });
 
-  const { code } = req.body;
-  const room = studyRooms.get(code);
+  const roomCode = req.body?.code || req.body?.room_code;
+  const room = studyRooms.get(roomCode);
   if (room) {
     room.members.delete(token);
     if (room.members.size === 0) {
-      studyRooms.delete(code);
+      studyRooms.delete(roomCode);
     }
   }
 

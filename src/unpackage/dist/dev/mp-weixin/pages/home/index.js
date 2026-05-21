@@ -2,12 +2,18 @@
 const common_vendor = require("../../common/vendor.js");
 const stores_user = require("../../stores/user.js");
 const stores_timer = require("../../stores/timer.js");
+const stores_todo = require("../../stores/todo.js");
 const types_index = require("../../types/index.js");
+if (!Math) {
+  TodoChecklist();
+}
+const TodoChecklist = () => "../../components/TodoChecklist.js";
 const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "index",
   setup(__props) {
     const userStore = stores_user.useUserStore();
     const timerStore = stores_timer.useTimerStore();
+    const todoStore = stores_todo.useTodoStore();
     const isWeixinMp = !!globalThis.wx && typeof globalThis.wx.getAccountInfoSync === "function";
     const showFireworks = common_vendor.ref(false);
     const selectedDuration = common_vendor.ref(25);
@@ -67,6 +73,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       return `${now.getMonth() + 1}月${now.getDate()}日 ${weekDays[now.getDay()]}`;
     });
     function startFocus() {
+      todoStore.clearActiveFocus();
       if (isWeixinMp) {
         common_vendor.index.requestSubscribeMessage({
           tmplIds: ["Q_caCI_KtwEuo1xG8JgyUU4pkdVHsnN4JUsZFB52uTo"],
@@ -96,6 +103,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     common_vendor.onMounted(() => {
       userStore.loadUser();
       timerStore.loadFromStorage();
+      todoStore.loadFromStorage();
       if (!userStore.isLoggedIn) {
         common_vendor.index.navigateTo({ url: "/pages/auth/index" });
       }
@@ -197,7 +205,12 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         F: selectedMode.value === "strict" ? 1 : "",
         G: common_vendor.o(($event) => selectedMode.value = "strict", "de"),
         H: common_vendor.o(startFocus, "71"),
-        I: common_vendor.o(goStudyRoom, "ad")
+        I: common_vendor.o(goStudyRoom, "ad"),
+        J: common_vendor.p({
+          duration: selectedDuration.value,
+          category: selectedCategory.value,
+          mode: selectedMode.value
+        })
       });
     };
   }

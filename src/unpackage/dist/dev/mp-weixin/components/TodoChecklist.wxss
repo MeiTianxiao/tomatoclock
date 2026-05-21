@@ -1,0 +1,221 @@
+.todo-card.data-v-6c96e131 {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
+}
+.todo-header.data-v-6c96e131 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.todo-title-row.data-v-6c96e131 {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.todo-icon.data-v-6c96e131 {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 16rpx;
+  background: rgba(59, 130, 246, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.todo-icon-text.data-v-6c96e131 {
+  color: #3b82f6;
+  font-size: 32rpx;
+  font-weight: 900;
+  line-height: 1;
+}
+.todo-title.data-v-6c96e131 {
+  font-size: 32rpx;
+  font-weight: 900;
+  color: #0f172a;
+}
+.todo-clear.data-v-6c96e131 {
+  font-size: 26rpx;
+  color: #94a3b8;
+}
+.todo-accent.data-v-6c96e131 {
+  height: 10rpx;
+  width: 280rpx;
+  border-radius: 999rpx;
+  margin-top: 18rpx;
+  background: #0f172a;
+  opacity: 0.85;
+}
+.todo-list.data-v-6c96e131 {
+  margin-top: 26rpx;
+}
+.todo-empty.data-v-6c96e131 {
+  padding: 26rpx 0;
+}
+.todo-empty-text.data-v-6c96e131 {
+  font-size: 26rpx;
+  color: #94a3b8;
+}
+.todo-item.data-v-6c96e131 {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 22rpx 0;
+  border-bottom: 1rpx dashed rgba(148, 163, 184, 0.4);
+}
+.todo-item.data-v-6c96e131:last-child {
+  border-bottom: none;
+}
+.todo-check.data-v-6c96e131 {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid rgba(148, 163, 184, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.todo-check.done.data-v-6c96e131 {
+  border-color: #0f172a;
+  background: #0f172a;
+}
+.todo-check-icon.data-v-6c96e131 {
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 900;
+  line-height: 1;
+}
+.todo-main.data-v-6c96e131 {
+  flex: 1;
+  min-width: 0;
+}
+.todo-text.data-v-6c96e131 {
+  font-size: 30rpx;
+  color: #0f172a;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.todo-text.done.data-v-6c96e131 {
+  color: #94a3b8;
+}
+.todo-meta.data-v-6c96e131 {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #94a3b8;
+  display: block;
+}
+.todo-start.data-v-6c96e131 {
+  width: 70rpx;
+  height: 70rpx;
+  border-radius: 18rpx;
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  font-size: 28rpx;
+  line-height: 70rpx;
+  padding: 0;
+  margin: 0;
+}
+.todo-start[disabled].data-v-6c96e131 {
+  opacity: 0.4;
+}
+.todo-start.data-v-6c96e131::after {
+  display: none;
+}
+.todo-input-row.data-v-6c96e131 {
+  margin-top: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  background: #f8fafc;
+  border-radius: 18rpx;
+  padding: 16rpx 16rpx;
+}
+.todo-input.data-v-6c96e131 {
+  flex: 1;
+  font-size: 28rpx;
+  padding: 0 6rpx;
+}
+.todo-add.data-v-6c96e131 {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 18rpx;
+  background: #fff;
+  color: #94a3b8;
+  font-size: 36rpx;
+  line-height: 64rpx;
+  padding: 0;
+  margin: 0;
+}
+.todo-add.data-v-6c96e131::after {
+  display: none;
+}
+.overlay.data-v-6c96e131 {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  justify-content: flex-end;
+}
+.cleared-panel.data-v-6c96e131 {
+  width: 560rpx;
+  height: 100%;
+  background: #fff;
+  padding: 32rpx;
+  box-sizing: border-box;
+}
+.cleared-header.data-v-6c96e131 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cleared-title.data-v-6c96e131 {
+  font-size: 32rpx;
+  font-weight: 900;
+  color: #0f172a;
+}
+.cleared-close.data-v-6c96e131 {
+  height: 60rpx;
+  line-height: 60rpx;
+  font-size: 26rpx;
+  padding: 0 18rpx;
+  border-radius: 16rpx;
+  background: #f1f5f9;
+  color: #475569;
+  margin: 0;
+}
+.cleared-close.data-v-6c96e131::after {
+  display: none;
+}
+.cleared-list.data-v-6c96e131 {
+  margin-top: 26rpx;
+}
+.cleared-empty.data-v-6c96e131 {
+  padding: 30rpx 0;
+}
+.cleared-empty-text.data-v-6c96e131 {
+  color: #94a3b8;
+  font-size: 26rpx;
+}
+.cleared-item.data-v-6c96e131 {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid rgba(148, 163, 184, 0.25);
+}
+.cleared-item.data-v-6c96e131:last-child {
+  border-bottom: none;
+}
+.cleared-text.data-v-6c96e131 {
+  font-size: 28rpx;
+  color: #0f172a;
+  display: block;
+}
+.cleared-meta.data-v-6c96e131 {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #94a3b8;
+  display: block;
+}

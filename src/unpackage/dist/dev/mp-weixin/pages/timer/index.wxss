@@ -266,6 +266,24 @@
   padding: 32rpx;
   margin-bottom: 40rpx;
 }
+.todo-finish-card.data-v-706ada7f {
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 40rpx;
+}
+.todo-finish-title.data-v-706ada7f {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #0f172a;
+  display: block;
+}
+.todo-finish-meta.data-v-706ada7f {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #475569;
+  display: block;
+}
 .points-label.data-v-706ada7f {
   font-size: 24rpx;
   color: #6b7280;

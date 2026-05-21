@@ -2,26 +2,30 @@
 const common_vendor = require("../../common/vendor.js");
 const stores_timer = require("../../stores/timer.js");
 const stores_user = require("../../stores/user.js");
+const stores_todo = require("../../stores/todo.js");
 const types_index = require("../../types/index.js");
 const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "index",
   setup(__props) {
     const timerStore = stores_timer.useTimerStore();
     const userStore = stores_user.useUserStore();
+    const todoStore = stores_todo.useTodoStore();
     const userAvatar = common_vendor.computed(() => {
       var _a;
       return ((_a = userStore.user) == null ? void 0 : _a.avatar_url) || "https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0";
     });
     const showPromotion = common_vendor.ref(false);
     const promotionData = common_vendor.ref(null);
+    const todoFinish = common_vendor.ref(null);
     let timerInterval = null;
     let audioCtx = null;
     const SOUND_URLS = {
-      rain: "https://cdn.pixabay.com/download/audio/2021/08/09/audio_145b23d9df.mp3",
-      wave: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_73bb85e926.mp3",
-      bird: "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3"
+      rain: "/static/audio/rain.mp3",
+      wave: "/static/audio/wave.mp3",
+      bird: "/static/audio/bird.mp3"
     };
     function initAudio() {
+      stopAudio();
       const settingsStr = common_vendor.index.getStorageSync("app-settings");
       if (settingsStr) {
         try {
@@ -30,9 +34,38 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             const url = SOUND_URLS[settings.soundType];
             if (url) {
               audioCtx = common_vendor.index.createInnerAudioContext();
-              audioCtx.src = url;
               audioCtx.loop = true;
-              audioCtx.play();
+              if (typeof audioCtx.onError === "function") {
+                audioCtx.onError(() => {
+                  stopAudio();
+                  common_vendor.index.showToast({ title: "白噪音播放失败，请检查音频文件", icon: "none" });
+                });
+              }
+              const playSrc = (src) => {
+                if (!audioCtx)
+                  return;
+                audioCtx.src = src;
+                audioCtx.play();
+              };
+              if (/^https?:\/\//.test(url)) {
+                common_vendor.index.downloadFile({
+                  url,
+                  success: (res) => {
+                    if (res.statusCode === 200 && res.tempFilePath) {
+                      playSrc(res.tempFilePath);
+                    } else {
+                      stopAudio();
+                      common_vendor.index.showToast({ title: "白噪音下载失败", icon: "none" });
+                    }
+                  },
+                  fail: () => {
+                    stopAudio();
+                    common_vendor.index.showToast({ title: "白噪音下载失败", icon: "none" });
+                  }
+                });
+              } else {
+                playSrc(url);
+              }
             }
           }
         } catch (e) {
@@ -114,18 +147,38 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     }
     function endFocus() {
       stopAudio();
+      const elapsedSeconds = Math.max(0, totalDuration.value - timeLeft.value);
+      const finished = todoStore.finishActiveFocus(elapsedSeconds);
+      todoFinish.value = finished ? { title: finished.title, seconds: finished.seconds } : null;
       const result = timerStore.stopFocus();
       if (result) {
         promotionData.value = result;
         showPromotion.value = true;
       } else {
-        common_vendor.index.switchTab({ url: "/pages/home/index" });
+        if (todoFinish.value) {
+          promotionData.value = {
+            oldRank: currentRank.value,
+            newRank: currentRank.value,
+            earnedPoints: 0,
+            wasPromoted: false
+          };
+          showPromotion.value = true;
+        } else {
+          common_vendor.index.switchTab({ url: "/pages/home/index" });
+        }
       }
     }
     function closePromotion() {
       showPromotion.value = false;
       promotionData.value = null;
+      todoFinish.value = null;
       common_vendor.index.switchTab({ url: "/pages/home/index" });
+    }
+    function formatSeconds(totalSeconds) {
+      const s = Math.max(0, Math.floor(totalSeconds || 0));
+      const mm = Math.floor(s / 60);
+      const ss = s % 60;
+      return `${mm.toString().padStart(2, "0")}:${ss.toString().padStart(2, "0")}`;
     }
     function getRankName(rank) {
       var _a;
@@ -183,7 +236,12 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         t: common_vendor.t(getRankName(promotionData.value.newRank))
       } : {}, {
         v: common_vendor.t(promotionData.value.earnedPoints),
-        w: common_vendor.o(closePromotion, "1a")
+        w: todoFinish.value
+      }, todoFinish.value ? {
+        x: common_vendor.t(todoFinish.value.title),
+        y: common_vendor.t(formatSeconds(todoFinish.value.seconds))
+      } : {}, {
+        z: common_vendor.o(closePromotion, "07")
       }) : {});
     };
   }

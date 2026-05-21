@@ -64,22 +64,33 @@ const defaultAvatar = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQ
 let pingTimer: any = null
 let joinTime: number = 0
 
-function generateRoomCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase()
-}
-
 async function createRoom() {
-  roomCode.value = generateRoomCode()
-  await joinRoom()
+  loading.value = true
+  try {
+    const res = await post('/study-room/join', {})
+    if (res.code === 200) {
+      currentRoom.value = res.data.code
+      members.value = res.data.members || []
+      inRoom.value = true
+      joinTime = Date.now()
+      startPing()
+      uni.showToast({ title: '已创建自习室', icon: 'success' })
+    }
+  } catch (e: any) {
+    uni.showToast({ title: e.message || '创建失败', icon: 'none' })
+  } finally {
+    loading.value = false
+  }
 }
 
 async function joinRoom() {
   if (!roomCode.value) return uni.showToast({ title: '请输入验证码', icon: 'none' })
   loading.value = true
   try {
-    const res = await post('/study-room/join', { room_code: roomCode.value.toUpperCase() })
+    const res = await post('/study-room/join', { code: roomCode.value.toUpperCase() })
     if (res.code === 200) {
-      currentRoom.value = roomCode.value.toUpperCase()
+      currentRoom.value = res.data.code
+      members.value = res.data.members || []
       inRoom.value = true
       joinTime = Date.now()
       startPing()
@@ -97,7 +108,7 @@ async function fetchMembers() {
   try {
     const res = await get(`/study-room/${currentRoom.value}`)
     if (res.data) {
-      members.value = res.data
+      members.value = res.data.members || []
     }
   } catch (e) {}
 }
@@ -105,7 +116,11 @@ async function fetchMembers() {
 async function ping() {
   if (!inRoom.value) return
   try {
-    await post('/study-room/ping', { room_code: currentRoom.value })
+    const res = await post('/study-room/ping', { code: currentRoom.value })
+    if (res.data?.members) {
+      members.value = res.data.members
+      return
+    }
     fetchMembers()
   } catch (e) {}
 }
@@ -140,7 +155,7 @@ async function leaveRoom() {
         const points = Math.floor(durationMinutes * 1.5) // 自习室积分1.5倍
         
         try {
-          await post('/study-room/leave', { room_code: currentRoom.value })
+          await post('/study-room/leave', { code: currentRoom.value })
         } catch (e) {}
 
         inRoom.value = false
@@ -163,7 +178,7 @@ async function leaveRoom() {
 onUnmounted(() => {
   stopPing()
   if (inRoom.value) {
-    post('/study-room/leave', { room_code: currentRoom.value }).catch(() => {})
+    post('/study-room/leave', { code: currentRoom.value }).catch(() => {})
   }
 })
 </script>
