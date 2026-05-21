@@ -145,6 +145,10 @@ async function sendWechatSubscribeMessage(openid, template_id, page, data) {
   }
 }
 
+function formatShanghaiTime(date = new Date()) {
+  return date.toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' })
+}
+
 // 内存中存储自习室信息
 // key: 房间验证码, value: { code, created_at, members: Map(userId -> { user, joined_at, last_ping }) }
 const studyRooms = new Map();
@@ -718,7 +722,7 @@ app.post('/api/focus/end', async (req, res) => {
         sendWechatSubscribeMessage(u.wechat_openid, 'Q_caCI_KtwEuo1xG8JgyUU4pkdVHsnN4JUsZFB52uTo', 'pages/home/index', {
           thing1: { value: '专注学习' }, // 习惯名称 (需按模板要求)
           thing2: { value: '已完成本次专注' }, // 完成情况
-          time3: { value: new Date().toLocaleString('zh-CN', { hour12: false }) } // 完成时间
+          time3: { value: formatShanghaiTime() } // 完成时间
         });
       }
 
@@ -821,7 +825,7 @@ app.post('/api/friends/invite', async (req, res) => {
         sendWechatSubscribeMessage(invitee.wechat_openid, 't_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU', 'pages/friends/index', {
           thing1: { value: '好友申请' }, // 申请类型或提示
           name2: { value: inviterUser.nickname.slice(0, 10) }, // 申请人昵称 (限制长度)
-          time3: { value: new Date().toLocaleString('zh-CN', { hour12: false }) } // 申请时间
+          time3: { value: formatShanghaiTime() } // 申请时间
         });
       }
 
@@ -977,6 +981,24 @@ app.post('/api/friends/invites/:id/accept', async (req, res) => {
       );
       if (upsertError) {
         return res.status(500).json({ code: 500, message: upsertError.message });
+      }
+
+      const { data: inviterUser } = await supabase
+        .from('users')
+        .select('wechat_openid,nickname')
+        .eq('id', invite.inviter_id)
+        .maybeSingle();
+      const { data: inviteeUser } = await supabase
+        .from('users')
+        .select('nickname')
+        .eq('id', token)
+        .maybeSingle();
+      if (inviterUser?.wechat_openid && inviteeUser?.nickname) {
+        sendWechatSubscribeMessage(inviterUser.wechat_openid, '83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU', 'pages/friends/index', {
+          thing1: { value: '好友申请已通过' },
+          name2: { value: inviteeUser.nickname.slice(0, 10) },
+          time3: { value: formatShanghaiTime() }
+        });
       }
 
       return res.json({ code: 200, message: 'success', data: { ok: true } });

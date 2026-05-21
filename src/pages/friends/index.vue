@@ -170,7 +170,10 @@ async function sendInvite() {
 
   if (isWeixinMp) {
     uni.requestSubscribeMessage({
-      tmplIds: ['t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU'],
+      tmplIds: [
+        't_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU',
+        '83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU'
+      ],
       complete: () => {
         performSend()
       }
@@ -212,6 +215,16 @@ onMounted(async () => {
     uni.navigateTo({ url: '/pages/auth/index' })
     return
   }
+
+  if (isWeixinMp) {
+    uni.requestSubscribeMessage({
+      tmplIds: [
+        't_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU',
+        '83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU'
+      ]
+    })
+  }
+
   await refreshUser()
   await loadAll()
 })
