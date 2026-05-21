@@ -50,7 +50,7 @@
       <view class="setting-item">
         <view class="setting-left">
           <text class="setting-icon">🔊</text>
-          <text class="setting-label">音效</text>
+          <text class="setting-label">专注音效</text>
         </view>
         <switch
           :checked="settings.soundEnabled"
@@ -58,6 +58,19 @@
           color="#3b82f6"
         />
       </view>
+
+      <picker v-if="settings.soundEnabled" mode="selector" :range="soundOptions.map(s => s.name)" @change="onSoundChange">
+        <view class="setting-item">
+          <view class="setting-left">
+            <text class="setting-icon">🎵</text>
+            <text class="setting-label">白噪音选择</text>
+          </view>
+          <view class="setting-right">
+            <text class="setting-value">{{ currentSoundName }}</text>
+            <text class="setting-arrow">›</text>
+          </view>
+        </view>
+      </picker>
 
       <view class="setting-item">
         <view class="setting-left">
@@ -128,6 +141,7 @@ const isWeixinMp = !!(globalThis as any).wx && typeof (globalThis as any).wx.get
 interface Settings {
   notifications: boolean
   soundEnabled: boolean
+  soundType: string
   darkMode: boolean
   privacyMode: boolean
   dailyGoal: number
@@ -137,11 +151,32 @@ interface Settings {
 const settings = ref<Settings>({
   notifications: true,
   soundEnabled: true,
+  soundType: 'rain',
   darkMode: false,
   privacyMode: false,
   dailyGoal: 120,
   theme: 'business'
 })
+
+const soundOptions = [
+  { id: 'none', name: '无声音' },
+  { id: 'rain', name: '下雨声' },
+  { id: 'wave', name: '海浪声' },
+  { id: 'bird', name: '鸟叫声' }
+]
+
+const currentSoundName = computed(() => {
+  return soundOptions.find(s => s.id === settings.value.soundType)?.name || '下雨声'
+})
+
+function onSoundChange(e: any) {
+  const index = e.detail.value
+  const picked = soundOptions[index]
+  if (picked) {
+    settings.value.soundType = picked.id
+    saveSettings()
+  }
+}
 
 const themeNames: Record<string, string> = {
   business: '商务蓝',
@@ -188,6 +223,7 @@ function loadSettings() {
       settings.value = JSON.parse(stored)
     } catch {
       // ignore
+    }
   }
 }
 

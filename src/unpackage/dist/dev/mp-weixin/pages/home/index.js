@@ -9,6 +9,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const userStore = stores_user.useUserStore();
     const timerStore = stores_timer.useTimerStore();
     const isWeixinMp = !!globalThis.wx && typeof globalThis.wx.getAccountInfoSync === "function";
+    const showFireworks = common_vendor.ref(false);
     const selectedDuration = common_vendor.ref(25);
     const selectedMode = common_vendor.ref("strict");
     const selectedCategory = common_vendor.ref("study");
@@ -66,8 +67,21 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       return `${now.getMonth() + 1}月${now.getDate()}日 ${weekDays[now.getDay()]}`;
     });
     function startFocus() {
-      timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value);
-      common_vendor.index.navigateTo({ url: "/pages/timer/index" });
+      if (isWeixinMp) {
+        common_vendor.index.requestSubscribeMessage({
+          tmplIds: ["Q_caCI_KtwEuo1xG8JgyUU4pkdVHsnN4JUsZFB52uTo"],
+          complete: () => {
+            timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value);
+            common_vendor.index.navigateTo({ url: "/pages/timer/index" });
+          }
+        });
+      } else {
+        timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value);
+        common_vendor.index.navigateTo({ url: "/pages/timer/index" });
+      }
+    }
+    function goStudyRoom() {
+      common_vendor.index.navigateTo({ url: "/pages/study-room/index" });
     }
     const customValues = Array.from({ length: 12 }, (_, i) => (i + 1) * 10);
     const customOptions = customValues.map((v) => `${v} 分钟`);
@@ -86,6 +100,33 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         common_vendor.index.navigateTo({ url: "/pages/auth/index" });
       }
     });
+    common_vendor.onShow(() => {
+      if (userStore.isLoggedIn) {
+        timerStore.syncWithServer();
+      }
+      checkDailyGoal();
+    });
+    function checkDailyGoal() {
+      const settings = common_vendor.index.getStorageSync("app-settings");
+      if (settings) {
+        try {
+          const parsed = JSON.parse(settings);
+          const dailyGoal = parsed.dailyGoal || 120;
+          if (timerStore.dailyPoints > 0 && totalMinutes.value >= dailyGoal) {
+            const today = (/* @__PURE__ */ new Date()).toDateString();
+            const lastCelebration = common_vendor.index.getStorageSync("last-celebration");
+            if (lastCelebration !== today) {
+              showFireworks.value = true;
+              common_vendor.index.setStorageSync("last-celebration", today);
+              setTimeout(() => {
+                showFireworks.value = false;
+              }, 4e3);
+            }
+          }
+        } catch {
+        }
+      }
+    }
     return (_ctx, _cache) => {
       var _a, _b, _c, _d, _e, _f, _g, _h, _i;
       return common_vendor.e({
@@ -104,20 +145,28 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         h: common_vendor.unref(isWeixinMp),
         i: common_vendor.t((totalMinutes.value / 60).toFixed(1)),
         j: common_vendor.t(pointsToNextRank.value),
-        k: (_f = user.value) == null ? void 0 : _f.avatar_url
+        k: showFireworks.value
+      }, showFireworks.value ? {
+        l: common_vendor.f(5, (i, k0, i0) => {
+          return {
+            a: i
+          };
+        })
+      } : {}, {
+        m: (_f = user.value) == null ? void 0 : _f.avatar_url
       }, ((_g = user.value) == null ? void 0 : _g.avatar_url) ? {
-        l: user.value.avatar_url
+        n: user.value.avatar_url
       } : common_vendor.unref(isWeixinMp) ? {} : {
-        n: common_vendor.t(((_i = (_h = user.value) == null ? void 0 : _h.nickname) == null ? void 0 : _i.slice(0, 1)) || "你")
+        p: common_vendor.t(((_i = (_h = user.value) == null ? void 0 : _h.nickname) == null ? void 0 : _i.slice(0, 1)) || "你")
       }, {
-        m: common_vendor.unref(isWeixinMp),
-        o: common_vendor.t(rankInfo.value.name),
-        p: rankInfo.value.color,
-        q: common_vendor.t(dailyPoints.value),
-        r: common_vendor.t(pointsToNextRank.value),
-        s: progressToNextRank.value + "%",
-        t: rankInfo.value.color,
-        v: common_vendor.f(durationOptions, (duration, k0, i0) => {
+        o: common_vendor.unref(isWeixinMp),
+        q: common_vendor.t(rankInfo.value.name),
+        r: rankInfo.value.color,
+        s: common_vendor.t(dailyPoints.value),
+        t: common_vendor.t(pointsToNextRank.value),
+        v: progressToNextRank.value + "%",
+        w: rankInfo.value.color,
+        x: common_vendor.f(durationOptions, (duration, k0, i0) => {
           return {
             a: common_vendor.t(duration.value),
             b: common_vendor.t(duration.desc),
@@ -129,11 +178,11 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             }, duration.value)
           };
         }),
-        w: common_vendor.t(isCustomDuration.value ? selectedDuration.value : "10-120"),
-        x: isCustomDuration.value ? 1 : "",
-        y: common_vendor.unref(customOptions),
-        z: common_vendor.o(onCustomDurationChange, "4c"),
-        A: common_vendor.f(common_vendor.unref(types_index.CATEGORY_CONFIG), (config, key, i0) => {
+        y: common_vendor.t(isCustomDuration.value ? selectedDuration.value : "10-120"),
+        z: isCustomDuration.value ? 1 : "",
+        A: common_vendor.unref(customOptions),
+        B: common_vendor.o(onCustomDurationChange, "ca"),
+        C: common_vendor.f(common_vendor.unref(types_index.CATEGORY_CONFIG), (config, key, i0) => {
           return {
             a: common_vendor.t(config.icon),
             b: config.color,
@@ -143,11 +192,12 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             f: common_vendor.o(($event) => selectedCategory.value = key, key)
           };
         }),
-        B: selectedMode.value === "gentle" ? 1 : "",
-        C: common_vendor.o(($event) => selectedMode.value = "gentle", "41"),
-        D: selectedMode.value === "strict" ? 1 : "",
-        E: common_vendor.o(($event) => selectedMode.value = "strict", "24"),
-        F: common_vendor.o(startFocus, "c0")
+        D: selectedMode.value === "gentle" ? 1 : "",
+        E: common_vendor.o(($event) => selectedMode.value = "gentle", "75"),
+        F: selectedMode.value === "strict" ? 1 : "",
+        G: common_vendor.o(($event) => selectedMode.value = "strict", "de"),
+        H: common_vendor.o(startFocus, "71"),
+        I: common_vendor.o(goStudyRoom, "ad")
       });
     };
   }

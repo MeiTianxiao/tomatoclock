@@ -104,6 +104,7 @@ import { inviteFriend, getFriendInvites, acceptFriendInvite, rejectFriendInvite,
 import type { User } from '@/types'
 
 const userStore = useUserStore()
+const isWeixinMp = !!(globalThis as any).wx && typeof (globalThis as any).wx.getAccountInfoSync === 'function'
 
 const inviteInput = ref('')
 const inviteLoading = ref(false)
@@ -152,16 +153,30 @@ async function sendInvite() {
     uni.showToast({ title: '请输入邀请码', icon: 'none' })
     return
   }
-  inviteLoading.value = true
-  try {
-    await inviteFriend(code)
-    inviteInput.value = ''
-    uni.showToast({ title: '已发送申请', icon: 'success' })
-    await loadAll()
-  } catch (e: any) {
-    uni.showToast({ title: e?.message || '发送失败', icon: 'none' })
-  } finally {
-    inviteLoading.value = false
+
+  const performSend = async () => {
+    inviteLoading.value = true
+    try {
+      await inviteFriend(code)
+      inviteInput.value = ''
+      uni.showToast({ title: '已发送申请', icon: 'success' })
+      await loadAll()
+    } catch (e: any) {
+      uni.showToast({ title: e?.message || '发送失败', icon: 'none' })
+    } finally {
+      inviteLoading.value = false
+    }
+  }
+
+  if (isWeixinMp) {
+    uni.requestSubscribeMessage({
+      tmplIds: ['t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU'],
+      complete: () => {
+        performSend()
+      }
+    })
+  } else {
+    performSend()
   }
 }
 

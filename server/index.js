@@ -112,6 +112,56 @@ async function getWeChatAccessToken() {
   return null;
 }
 
+async function sendWechatSubscribeMessage(openid, template_id, page, data) {
+  const accessToken = await getWeChatAccessToken();
+  if (!accessToken) return { ok: false, message: '获取 access_token 失败' };
+
+  const url = `https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${encodeURIComponent(accessToken)}`;
+  const body = {
+    touser: openid,
+    template_id,
+    page: page || 'pages/home/index',
+    data: data
+  };
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const json = await resp.json();
+    if (json.errcode === 0) {
+      return { ok: true };
+    } else {
+      console.error('发送微信订阅消息失败:', json);
+      return { ok: false, message: json.errmsg, data: json };
+    }
+  } catch (e) {
+    console.error('发送微信订阅消息异常:', e);
+    return { ok: false, message: e.message };
+  }
+}
+
+// 内存中存储自习室信息
+// key: 房间验证码, value: { code, created_at, members: Map(userId -> { user, joined_at, last_ping }) }
+const studyRooms = new Map();
+
+// 清理超时的自习室成员 (比如 30 秒没 ping 视为掉线)
+setInterval(() => {
+  const now = Date.now();
+  for (const [code, room] of studyRooms.entries()) {
+    for (const [userId, member] of room.members.entries()) {
+      if (now - member.last_ping > 30000) {
+        room.members.delete(userId);
+      }
+    }
+    if (room.members.size === 0) {
+      studyRooms.delete(code);
+    }
+  }
+}, 10000);
+
 async function wechatJscode2session(code) {
   if (!wechatAppId || !wechatSecret) {
     return { ok: false, message: '未配置微信 AppID/Secret' };
@@ -139,20 +189,30 @@ async function ensureWeeklyStats(userId) {
   const weekEnd = getWeekEnd();
 
   if (supabase) {
-    const { error } = await supabase.from('weekly_stats').upsert(
-      {
-        user_id: userId,
-        week_start: weekStart,
-        week_end: weekEnd,
-        total_minutes: 0,
-        total_points: 0,
-        current_rank: 'intern',
-        highest_rank: 'intern',
-        sessions_completed: 0
-      },
-      { onConflict: 'user_id,week_start' }
-    );
-    return error ? { ok: false, message: error.message } : { ok: true };
+    const { data: existed, error: existedError } = await supabase
+      .from('weekly_stats')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('week_start', weekStart)
+      .maybeSingle();
+    if (existedError) {
+      return { ok: false, message: existedError.message };
+    }
+    if (existed) {
+      return { ok: true };
+    }
+
+    const { error: insertError } = await supabase.from('weekly_stats').insert({
+      user_id: userId,
+      week_start: weekStart,
+      week_end: weekEnd,
+      total_minutes: 0,
+      total_points: 0,
+      current_rank: 'intern',
+      highest_rank: 'intern',
+      sessions_completed: 0
+    });
+    return insertError ? { ok: false, message: insertError.message } : { ok: true };
   }
 
   const existed = weeklyStats.find(s => s.user_id === userId && s.week_start === weekStart);
@@ -648,6 +708,18 @@ app.post('/api/focus/end', async (req, res) => {
         x_sessions: 1
       });
 
+      // 发送专注完成微信通知
+      const { data: u } = await supabase.from('users').select('wechat_openid, nickname').eq('id', token).maybeSingle();
+      if (u && u.wechat_openid) {
+        // 注意：这里的 thing1, time2 等字段必须和你在微信公众平台申请的模板详情中的字段名完全一致！
+        // 如果字段名不对，会报 47003 错误
+        sendWechatSubscribeMessage(u.wechat_openid, 'Q_caCI_KtwEuo1xG8JgyUU4pkdVHsnN4JUsZFB52uTo', 'pages/home/index', {
+          thing1: { value: '专注学习' }, // 习惯名称 (需按模板要求)
+          thing2: { value: '已完成本次专注' }, // 完成情况
+          time3: { value: new Date().toLocaleString('zh-CN', { hour12: false }) } // 完成时间
+        });
+      }
+
       return res.json({ code: 200, message: '记录成功' });
     } catch (e) {
       console.error(e);
@@ -672,7 +744,7 @@ app.post('/api/friends/invite', async (req, res) => {
     try {
       const { data: invitee, error: inviteeError } = await supabase
         .from('users')
-        .select('id,nickname,avatar_url,invite_code')
+        .select('id,nickname,avatar_url,invite_code,wechat_openid')
         .eq('invite_code', invite_code.trim().toUpperCase())
         .maybeSingle();
 
@@ -739,6 +811,16 @@ app.post('/api/friends/invite', async (req, res) => {
 
       if (createError) {
         return res.status(500).json({ code: 500, message: createError.message });
+      }
+
+      // 发送好友申请微信通知
+      const { data: inviterUser } = await supabase.from('users').select('nickname').eq('id', token).maybeSingle();
+      if (invitee.wechat_openid && inviterUser) {
+        sendWechatSubscribeMessage(invitee.wechat_openid, 't_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU', 'pages/friends/index', {
+          thing1: { value: '好友申请' }, // 申请类型或提示
+          name2: { value: inviterUser.nickname.slice(0, 10) }, // 申请人昵称 (限制长度)
+          time3: { value: new Date().toLocaleString('zh-CN', { hour12: false }) } // 申请时间
+        });
       }
 
       return res.json({ code: 200, message: 'success', data: { invite: created, invitee } });
@@ -1405,6 +1487,125 @@ app.get('/api/leaderboard', async (req, res) => {
     }));
   
   res.json({ code: 200, message: 'success', data: leaderboard });
+});
+
+// =====================================
+// 自习室 API (Study Room)
+// =====================================
+
+app.post('/api/study-room/join', async (req, res) => {
+  const token = getToken(req);
+  if (!token) return res.status(401).json({ code: 401, message: '未登录' });
+
+  const { code } = req.body; // 房间验证码
+  let roomCode = code;
+
+  // 获取用户信息
+  let user = null;
+  if (supabase) {
+    const { data } = await supabase.from('users').select('id,nickname,avatar_url').eq('id', token).maybeSingle();
+    user = data;
+  } else {
+    user = users.find(u => u.id === token);
+  }
+  if (!user) return res.status(401).json({ code: 401, message: '用户不存在' });
+
+  // 如果没有传 code，则是创建新房间
+  if (!roomCode) {
+    roomCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+    studyRooms.set(roomCode, {
+      code: roomCode,
+      created_at: Date.now(),
+      members: new Map()
+    });
+  }
+
+  const room = studyRooms.get(roomCode);
+  if (!room) {
+    return res.status(404).json({ code: 404, message: '自习室不存在或已关闭' });
+  }
+
+  // 加入房间
+  room.members.set(user.id, {
+    user,
+    joined_at: Date.now(),
+    last_ping: Date.now()
+  });
+
+  const membersList = Array.from(room.members.values()).map(m => m.user);
+
+  return res.json({
+    code: 200,
+    message: 'success',
+    data: {
+      code: roomCode,
+      members: membersList
+    }
+  });
+});
+
+app.post('/api/study-room/ping', async (req, res) => {
+  const token = getToken(req);
+  if (!token) return res.status(401).json({ code: 401, message: '未登录' });
+
+  const { code } = req.body;
+  const room = studyRooms.get(code);
+  if (!room) {
+    return res.status(404).json({ code: 404, message: '自习室不存在或已关闭' });
+  }
+
+  const member = room.members.get(token);
+  if (!member) {
+    return res.status(404).json({ code: 404, message: '您不在该自习室中' });
+  }
+
+  // 更新最后心跳时间
+  member.last_ping = Date.now();
+
+  const membersList = Array.from(room.members.values()).map(m => m.user);
+
+  return res.json({
+    code: 200,
+    message: 'success',
+    data: {
+      code: room.code,
+      members: membersList
+    }
+  });
+});
+
+app.post('/api/study-room/leave', async (req, res) => {
+  const token = getToken(req);
+  if (!token) return res.status(401).json({ code: 401, message: '未登录' });
+
+  const { code } = req.body;
+  const room = studyRooms.get(code);
+  if (room) {
+    room.members.delete(token);
+    if (room.members.size === 0) {
+      studyRooms.delete(code);
+    }
+  }
+
+  return res.json({ code: 200, message: '已离开' });
+});
+
+app.get('/api/study-room/:code', async (req, res) => {
+  const { code } = req.params;
+  const room = studyRooms.get(code);
+  if (!room) {
+    return res.status(404).json({ code: 404, message: '自习室不存在' });
+  }
+  
+  const membersList = Array.from(room.members.values()).map(m => m.user);
+  return res.json({
+    code: 200,
+    message: 'success',
+    data: {
+      code: room.code,
+      members: membersList
+    }
+  });
 });
 
 const host = process.env.HOST || '0.0.0.0';

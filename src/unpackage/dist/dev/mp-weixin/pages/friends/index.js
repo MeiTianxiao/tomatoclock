@@ -7,6 +7,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "index",
   setup(__props) {
     const userStore = stores_user.useUserStore();
+    const isWeixinMp = !!globalThis.wx && typeof globalThis.wx.getAccountInfoSync === "function";
     const inviteInput = common_vendor.ref("");
     const inviteLoading = common_vendor.ref(false);
     const actionLoadingId = common_vendor.ref("");
@@ -51,16 +52,28 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         common_vendor.index.showToast({ title: "请输入邀请码", icon: "none" });
         return;
       }
-      inviteLoading.value = true;
-      try {
-        await api_friends.inviteFriend(code);
-        inviteInput.value = "";
-        common_vendor.index.showToast({ title: "已发送申请", icon: "success" });
-        await loadAll();
-      } catch (e) {
-        common_vendor.index.showToast({ title: (e == null ? void 0 : e.message) || "发送失败", icon: "none" });
-      } finally {
-        inviteLoading.value = false;
+      const performSend = async () => {
+        inviteLoading.value = true;
+        try {
+          await api_friends.inviteFriend(code);
+          inviteInput.value = "";
+          common_vendor.index.showToast({ title: "已发送申请", icon: "success" });
+          await loadAll();
+        } catch (e) {
+          common_vendor.index.showToast({ title: (e == null ? void 0 : e.message) || "发送失败", icon: "none" });
+        } finally {
+          inviteLoading.value = false;
+        }
+      };
+      if (isWeixinMp) {
+        common_vendor.index.requestSubscribeMessage({
+          tmplIds: ["t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU"],
+          complete: () => {
+            performSend();
+          }
+        });
+      } else {
+        performSend();
       }
     }
     async function accept(id) {

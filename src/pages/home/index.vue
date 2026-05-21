@@ -98,13 +98,17 @@
         </view>
       </view>
 
-      <button class="start-btn" @click="startFocus">开始工作</button>
+      <view class="action-grid">
+        <button class="start-btn" @click="startFocus">开始工作</button>
+        <button class="study-room-btn" @click="goStudyRoom">双人自习室</button>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { useTimerStore } from '@/stores/timer'
 import { RANK_CONFIG, CATEGORY_CONFIG, type FocusCategory } from '@/types'
@@ -185,8 +189,22 @@ function getCategoryName(category: FocusCategory) {
 }
 
 function startFocus() {
-  timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value)
-  uni.navigateTo({ url: '/pages/timer/index' })
+  if (isWeixinMp) {
+    uni.requestSubscribeMessage({
+      tmplIds: ['Q_caCI_KtwEuo1xG8JgyUU4pkdVHsnN4JUsZFB52uTo'],
+      complete: () => {
+        timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value)
+        uni.navigateTo({ url: '/pages/timer/index' })
+      }
+    })
+  } else {
+    timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value)
+    uni.navigateTo({ url: '/pages/timer/index' })
+  }
+}
+
+function goStudyRoom() {
+  uni.navigateTo({ url: '/pages/study-room/index' })
 }
 
 const customValues = Array.from({ length: 12 }, (_, i) => (i + 1) * 10)
@@ -208,7 +226,12 @@ onMounted(() => {
   if (!userStore.isLoggedIn) {
     uni.navigateTo({ url: '/pages/auth/index' })
   }
-  
+})
+
+onShow(() => {
+  if (userStore.isLoggedIn) {
+    timerStore.syncWithServer()
+  }
   checkDailyGoal()
 })
 
@@ -218,7 +241,7 @@ function checkDailyGoal() {
     try {
       const parsed = JSON.parse(settings)
       const dailyGoal = parsed.dailyGoal || 120
-      if (timerStore.dailyPoints > 0 && timerStore.totalDuration / 60 >= dailyGoal) {
+      if (timerStore.dailyPoints > 0 && totalMinutes.value >= dailyGoal) {
         // 检查今天是否已经庆祝过
         const today = new Date().toDateString()
         const lastCelebration = uni.getStorageSync('last-celebration')
@@ -606,14 +629,43 @@ function checkDailyGoal() {
   line-height: 1.5;
 }
 
+.action-grid {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 48rpx;
+}
+
 .start-btn {
-  margin-top: 28rpx;
-  height: 112rpx;
-  border-radius: 26rpx;
-  border: none;
+  flex: 2;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: #fff;
-  font-size: 34rpx;
-  font-weight: 900;
-  background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+  font-size: 32rpx;
+  font-weight: bold;
+  border-radius: 24rpx;
+  border: none;
+  box-shadow: 0 8rpx 16rpx rgba(59, 130, 246, 0.3);
+  padding: 24rpx 0;
+  line-height: 1.5;
+}
+
+.study-room-btn {
+  flex: 1;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 28rpx;
+  font-weight: bold;
+  border-radius: 24rpx;
+  border: none;
+  padding: 24rpx 0;
+  line-height: 1.5;
+}
+
+.start-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 4rpx 8rpx rgba(59, 130, 246, 0.2);
+}
+.study-room-btn:active {
+  transform: scale(0.98);
+  background: #e2e8f0;
 }
 </style>

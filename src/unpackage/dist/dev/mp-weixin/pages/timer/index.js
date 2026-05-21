@@ -15,6 +15,37 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const showPromotion = common_vendor.ref(false);
     const promotionData = common_vendor.ref(null);
     let timerInterval = null;
+    let audioCtx = null;
+    const SOUND_URLS = {
+      rain: "https://cdn.pixabay.com/download/audio/2021/08/09/audio_145b23d9df.mp3",
+      wave: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_73bb85e926.mp3",
+      bird: "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3"
+    };
+    function initAudio() {
+      const settingsStr = common_vendor.index.getStorageSync("app-settings");
+      if (settingsStr) {
+        try {
+          const settings = JSON.parse(settingsStr);
+          if (settings.soundEnabled && settings.soundType && settings.soundType !== "none") {
+            const url = SOUND_URLS[settings.soundType];
+            if (url) {
+              audioCtx = common_vendor.index.createInnerAudioContext();
+              audioCtx.src = url;
+              audioCtx.loop = true;
+              audioCtx.play();
+            }
+          }
+        } catch (e) {
+        }
+      }
+    }
+    function stopAudio() {
+      if (audioCtx) {
+        audioCtx.stop();
+        audioCtx.destroy();
+        audioCtx = null;
+      }
+    }
     const isActive = common_vendor.computed(() => timerStore.isActive);
     const isPaused = common_vendor.computed(() => timerStore.isPaused);
     const timeLeft = common_vendor.computed(() => timerStore.timeLeft);
@@ -60,9 +91,15 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     });
     function pauseFocus() {
       timerStore.pauseFocus();
+      if (audioCtx) {
+        audioCtx.pause();
+      }
     }
     function resumeFocus() {
       timerStore.resumeFocus();
+      if (audioCtx) {
+        audioCtx.play();
+      }
     }
     function showStopConfirm() {
       common_vendor.index.showModal({
@@ -76,6 +113,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       });
     }
     function endFocus() {
+      stopAudio();
       const result = timerStore.stopFocus();
       if (result) {
         promotionData.value = result;
@@ -102,6 +140,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         common_vendor.index.navigateBack();
         return;
       }
+      initAudio();
       timerInterval = setInterval(() => {
         timerStore.tick();
         if (timeLeft.value === 0 && isActive.value) {
@@ -110,6 +149,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }, 1e3);
     });
     common_vendor.onUnmounted(() => {
+      stopAudio();
       if (timerInterval) {
         clearInterval(timerInterval);
       }

@@ -7,7 +7,8 @@
     "pages/leaderboard/index",
     "pages/stats/index",
     "pages/settings/index",
-    "pages/friends/index"
+    "pages/friends/index",
+    "pages/study-room/index"
   ],
   "window": {
     "navigationBarTextStyle": "white",

@@ -1,6 +1,8 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
 const types_index = require("../types/index.js");
+const api_user = require("../api/user.js");
+const stores_user = require("./user.js");
 const RANK_ORDER = ["intern", "junior", "middle", "senior", "expert", "master"];
 const useTimerStore = common_vendor.defineStore("timer", () => {
   const dailyPoints = common_vendor.ref(0);
@@ -10,6 +12,7 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
   const isPaused = common_vendor.ref(false);
   const timeLeft = common_vendor.ref(0);
   const totalDuration = common_vendor.ref(0);
+  const targetTime = common_vendor.ref(0);
   const currentCategory = common_vendor.ref("study");
   const currentMode = common_vendor.ref("strict");
   const nextRank = common_vendor.computed(() => {
@@ -56,6 +59,7 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
   function startFocus(duration, category, mode) {
     totalDuration.value = duration * 60;
     timeLeft.value = duration * 60;
+    targetTime.value = Date.now() + duration * 60 * 1e3;
     currentCategory.value = category;
     currentMode.value = mode;
     isActive.value = true;
@@ -66,6 +70,7 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
   }
   function resumeFocus() {
     isPaused.value = false;
+    targetTime.value = Date.now() + timeLeft.value * 1e3;
   }
   function stopFocus() {
     isActive.value = false;
@@ -91,6 +96,11 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
     };
     sessions.value.push(session);
     saveToStorage();
+    api_user.syncFocusEnd({
+      duration_minutes: minutes,
+      points,
+      rank_after: newRank
+    }).catch(console.error);
     return {
       oldRank,
       newRank,
@@ -109,8 +119,9 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
     return "intern";
   }
   function tick() {
-    if (isActive.value && !isPaused.value && timeLeft.value > 0) {
-      timeLeft.value--;
+    if (isActive.value && !isPaused.value) {
+      const remaining = Math.max(0, Math.ceil((targetTime.value - Date.now()) / 1e3));
+      timeLeft.value = remaining;
     }
   }
   function resetDaily() {
@@ -118,6 +129,31 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
     currentRank.value = "intern";
     sessions.value = [];
     saveToStorage();
+  }
+  async function syncWithServer() {
+    var _a;
+    const userStore = stores_user.useUserStore();
+    if (!((_a = userStore.user) == null ? void 0 : _a.id))
+      return;
+    try {
+      const stats = await api_user.getWeeklyStats(userStore.user.id);
+      if (stats) {
+        let changed = false;
+        if (stats.total_points !== void 0 && stats.total_points !== dailyPoints.value) {
+          dailyPoints.value = stats.total_points;
+          changed = true;
+        }
+        if (stats.current_rank && stats.current_rank !== currentRank.value) {
+          currentRank.value = stats.current_rank;
+          changed = true;
+        }
+        if (changed) {
+          saveToStorage();
+        }
+      }
+    } catch (e) {
+      common_vendor.index.__f__("error", "at stores/timer.ts:175", "Sync failed:", e);
+    }
   }
   return {
     dailyPoints,
@@ -139,7 +175,8 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
     tick,
     resetDaily,
     loadFromStorage,
-    saveToStorage
+    saveToStorage,
+    syncWithServer
   };
 });
 exports.useTimerStore = useTimerStore;

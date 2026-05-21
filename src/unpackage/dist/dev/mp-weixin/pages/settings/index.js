@@ -10,11 +10,30 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const settings = common_vendor.ref({
       notifications: true,
       soundEnabled: true,
+      soundType: "rain",
       darkMode: false,
       privacyMode: false,
       dailyGoal: 120,
       theme: "business"
     });
+    const soundOptions = [
+      { id: "none", name: "无声音" },
+      { id: "rain", name: "下雨声" },
+      { id: "wave", name: "海浪声" },
+      { id: "bird", name: "鸟叫声" }
+    ];
+    const currentSoundName = common_vendor.computed(() => {
+      var _a;
+      return ((_a = soundOptions.find((s) => s.id === settings.value.soundType)) == null ? void 0 : _a.name) || "下雨声";
+    });
+    function onSoundChange(e) {
+      const index = e.detail.value;
+      const picked = soundOptions[index];
+      if (picked) {
+        settings.value.soundType = picked.id;
+        saveSettings();
+      }
+    }
     const user = common_vendor.computed(() => userStore.user);
     const hasRealNickname = common_vendor.computed(() => {
       var _a;
@@ -58,14 +77,22 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         }
       }
     }
+    const goalValues = Array.from({ length: 12 }, (_, i) => (i + 1) * 30);
+    const goalOptions = goalValues.map((v) => `${v} 分钟`);
+    function onGoalChange(e) {
+      const index = e.detail.value;
+      const picked = goalValues[index];
+      if (picked) {
+        settings.value.dailyGoal = picked;
+        saveSettings();
+        common_vendor.index.showToast({ title: "设置成功", icon: "success" });
+      }
+    }
     function editProfile() {
       common_vendor.index.showToast({ title: "功能开发中", icon: "none" });
     }
     function goFriends() {
       common_vendor.index.navigateTo({ url: "/pages/friends/index" });
-    }
-    function showGoalSettings() {
-      common_vendor.index.showToast({ title: "功能开发中", icon: "none" });
     }
     function showAbout() {
       common_vendor.index.showModal({
@@ -118,14 +145,21 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         l: settings.value.notifications,
         m: common_vendor.o(($event) => toggleSetting("notifications"), "00"),
         n: settings.value.soundEnabled,
-        o: common_vendor.o(($event) => toggleSetting("soundEnabled"), "bd"),
-        p: settings.value.privacyMode,
-        q: common_vendor.o(($event) => toggleSetting("privacyMode"), "20"),
-        r: common_vendor.t(settings.value.dailyGoal),
-        s: common_vendor.o(showGoalSettings, "67"),
-        t: common_vendor.o(showAbout, "44"),
-        v: common_vendor.o(showFeedback, "7c"),
-        w: common_vendor.o(handleLogout, "f6")
+        o: common_vendor.o(($event) => toggleSetting("soundEnabled"), "2b"),
+        p: settings.value.soundEnabled
+      }, settings.value.soundEnabled ? {
+        q: common_vendor.t(currentSoundName.value),
+        r: soundOptions.map((s) => s.name),
+        s: common_vendor.o(onSoundChange, "38")
+      } : {}, {
+        t: settings.value.privacyMode,
+        v: common_vendor.o(($event) => toggleSetting("privacyMode"), "8d"),
+        w: common_vendor.t(settings.value.dailyGoal),
+        x: common_vendor.unref(goalOptions),
+        y: common_vendor.o(onGoalChange, "13"),
+        z: common_vendor.o(showAbout, "35"),
+        A: common_vendor.o(showFeedback, "31"),
+        B: common_vendor.o(handleLogout, "8e")
       });
     };
   }

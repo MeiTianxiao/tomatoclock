@@ -91,6 +91,16 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }
       loadLeaderboard();
     });
+    common_vendor.onShow(() => {
+      if (userStore.isLoggedIn) {
+        timerStore.syncWithServer();
+        if (activeBoard.value === "all") {
+          loadLeaderboard();
+        } else {
+          loadFriendBoard();
+        }
+      }
+    });
     return (_ctx, _cache) => {
       var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q;
       return common_vendor.e({

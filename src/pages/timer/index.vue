@@ -116,6 +116,39 @@ const userAvatar = computed(() => {
 const showPromotion = ref(false)
 const promotionData = ref<{ oldRank: string; newRank: string; earnedPoints: number; wasPromoted: boolean } | null>(null)
 let timerInterval: number | null = null
+let audioCtx: any = null
+
+const SOUND_URLS: Record<string, string> = {
+  rain: 'https://cdn.pixabay.com/download/audio/2021/08/09/audio_145b23d9df.mp3',
+  wave: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_73bb85e926.mp3',
+  bird: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3'
+}
+
+function initAudio() {
+  const settingsStr = uni.getStorageSync('app-settings')
+  if (settingsStr) {
+    try {
+      const settings = JSON.parse(settingsStr)
+      if (settings.soundEnabled && settings.soundType && settings.soundType !== 'none') {
+        const url = SOUND_URLS[settings.soundType]
+        if (url) {
+          audioCtx = uni.createInnerAudioContext()
+          audioCtx.src = url
+          audioCtx.loop = true
+          audioCtx.play()
+        }
+      }
+    } catch (e) {}
+  }
+}
+
+function stopAudio() {
+  if (audioCtx) {
+    audioCtx.stop()
+    audioCtx.destroy()
+    audioCtx = null
+  }
+}
 
 const isActive = computed(() => timerStore.isActive)
 const isPaused = computed(() => timerStore.isPaused)
@@ -168,10 +201,16 @@ const currentTip = computed(() => {
 
 function pauseFocus() {
   timerStore.pauseFocus()
+  if (audioCtx) {
+    audioCtx.pause()
+  }
 }
 
 function resumeFocus() {
   timerStore.resumeFocus()
+  if (audioCtx) {
+    audioCtx.play()
+  }
 }
 
 function showStopConfirm() {
@@ -187,6 +226,7 @@ function showStopConfirm() {
 }
 
 function endFocus() {
+  stopAudio()
   const result = timerStore.stopFocus()
   if (result) {
     promotionData.value = result
@@ -220,6 +260,8 @@ onMounted(() => {
     return
   }
 
+  initAudio()
+
   timerInterval = setInterval(() => {
     timerStore.tick()
     if (timeLeft.value === 0 && isActive.value) {
@@ -229,6 +271,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  stopAudio()
   if (timerInterval) {
     clearInterval(timerInterval)
   }

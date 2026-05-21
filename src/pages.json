@@ -55,6 +55,13 @@
         "navigationBarTitleText": "好友",
         "navigationStyle": "custom"
       }
+    },
+    {
+      "path": "pages/study-room/index",
+      "style": {
+        "navigationBarTitleText": "自习室",
+        "navigationStyle": "custom"
+      }
     }
   ],
   "globalStyle": {

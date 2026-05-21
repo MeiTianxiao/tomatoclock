@@ -187,6 +187,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { onShow, onHide } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { useTimerStore } from '@/stores/timer'
 import { getLeaderboard, getFriendLeaderboard, type LeaderboardItem } from '@/api/leaderboard'
@@ -200,6 +201,7 @@ const loading = ref(false)
 const activeBoard = ref<'all' | 'friend'>('all')
 const friendLeaderboard = ref<LeaderboardItem[]>([])
 const friendLoading = ref(false)
+let refreshTimer: any = null
 
 const wxAny = (globalThis as any).wx
 const isWeixinMp = !!wxAny && typeof wxAny.login === 'function'
@@ -235,25 +237,25 @@ function getRankName(rank: string) {
   return RANK_CONFIG[rank as keyof typeof RANK_CONFIG]?.name || rank
 }
 
-async function loadLeaderboard() {
+async function loadLeaderboard(silent = false) {
   loading.value = true
   try {
     const data = await getLeaderboard(20)
     leaderboard.value = data
   } catch (error) {
-    uni.showToast({ title: '加载排行榜失败', icon: 'none' })
+    if (!silent) uni.showToast({ title: '加载排行榜失败', icon: 'none' })
   } finally {
     loading.value = false
   }
 }
 
-async function loadFriendBoard() {
+async function loadFriendBoard(silent = false) {
   friendLoading.value = true
   try {
     const data = await getFriendLeaderboard(50)
     friendLeaderboard.value = data
   } catch (error) {
-    uni.showToast({ title: '加载好友榜失败', icon: 'none' })
+    if (!silent) uni.showToast({ title: '加载好友榜失败', icon: 'none' })
   } finally {
     friendLoading.value = false
   }
@@ -284,6 +286,34 @@ onMounted(() => {
   }
   
   loadLeaderboard()
+})
+
+onShow(() => {
+  if (userStore.isLoggedIn) {
+    timerStore.syncWithServer()
+    if (activeBoard.value === 'all') {
+      loadLeaderboard()
+    } else {
+      loadFriendBoard()
+    }
+
+    if (refreshTimer) clearInterval(refreshTimer)
+    refreshTimer = setInterval(() => {
+      if (!userStore.isLoggedIn) return
+      if (activeBoard.value === 'all') {
+        loadLeaderboard(true)
+      } else {
+        loadFriendBoard(true)
+      }
+    }, 5000)
+  }
+})
+
+onHide(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
 })
 </script>
 

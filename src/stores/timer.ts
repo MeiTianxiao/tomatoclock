@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { SessionRecord, FocusCategory, RankType, PromotionData } from '@/types'
 import { RANK_CONFIG } from '@/types'
-import { syncFocusEnd } from '@/api/user'
+import { syncFocusEnd, getWeeklyStats } from '@/api/user'
+import { useUserStore } from './user'
 
 const RANK_ORDER: RankType[] = ['intern', 'junior', 'middle', 'senior', 'expert', 'master']
 
@@ -14,8 +15,33 @@ export const useTimerStore = defineStore('timer', () => {
   const isPaused = ref(false)
   const timeLeft = ref(0)
   const totalDuration = ref(0)
+  const targetTime = ref(0)
   const currentCategory = ref<FocusCategory>('study')
   const currentMode = ref<'strict' | 'gentle'>('strict')
+
+  function getWeekStartTs() {
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+    const monday = new Date(now)
+    monday.setDate(now.getDate() + diff)
+    monday.setHours(0, 0, 0, 0)
+    return monday.getTime()
+  }
+
+  function getLocalWeekSummary() {
+    const weekStartTs = getWeekStartTs()
+    const weekSessions = sessions.value.filter(s => s.completed && (s.startTime || 0) >= weekStartTs)
+    const totalMinutes = weekSessions.reduce((sum, s) => sum + (s.duration || 0), 0)
+    const totalPoints = weekSessions.reduce((sum, s) => sum + (s.points || 0), 0)
+    return { totalMinutes, totalPoints }
+  }
+
+  function recalcFromSessions() {
+    const { totalPoints } = getLocalWeekSummary()
+    dailyPoints.value = totalPoints
+    currentRank.value = calculateRank()
+  }
 
   const nextRank = computed(() => {
     const currentIndex = RANK_ORDER.indexOf(currentRank.value)
@@ -45,6 +71,7 @@ export const useTimerStore = defineStore('timer', () => {
         dailyPoints.value = data.dailyPoints || 0
         currentRank.value = (data.currentRank as RankType) || 'intern'
         sessions.value = data.sessions || []
+        recalcFromSessions()
       } catch {
         resetDaily()
       }
@@ -63,6 +90,7 @@ export const useTimerStore = defineStore('timer', () => {
   function startFocus(duration: number, category: FocusCategory, mode: 'strict' | 'gentle') {
     totalDuration.value = duration * 60
     timeLeft.value = duration * 60
+    targetTime.value = Date.now() + duration * 60 * 1000
     currentCategory.value = category
     currentMode.value = mode
     isActive.value = true
@@ -75,6 +103,7 @@ export const useTimerStore = defineStore('timer', () => {
 
   function resumeFocus() {
     isPaused.value = false
+    targetTime.value = Date.now() + timeLeft.value * 1000
   }
 
   function stopFocus(): PromotionData & { wasPromoted: boolean } | null {
@@ -134,8 +163,9 @@ export const useTimerStore = defineStore('timer', () => {
   }
 
   function tick() {
-    if (isActive.value && !isPaused.value && timeLeft.value > 0) {
-      timeLeft.value--
+    if (isActive.value && !isPaused.value) {
+      const remaining = Math.max(0, Math.ceil((targetTime.value - Date.now()) / 1000))
+      timeLeft.value = remaining
     }
   }
 
@@ -144,6 +174,43 @@ export const useTimerStore = defineStore('timer', () => {
     currentRank.value = 'intern'
     sessions.value = []
     saveToStorage()
+  }
+
+  async function syncWithServer() {
+    const userStore = useUserStore()
+    if (!userStore.user?.id) return
+    
+    try {
+      const stats = await getWeeklyStats(userStore.user.id)
+      if (stats) {
+        const local = getLocalWeekSummary()
+        const serverPoints = stats.total_points || 0
+        const serverMinutes = stats.total_minutes || 0
+
+        if (local.totalPoints > serverPoints || local.totalMinutes > serverMinutes) {
+          const deltaPoints = Math.max(0, local.totalPoints - serverPoints)
+          const deltaMinutes = Math.max(0, local.totalMinutes - serverMinutes)
+          if (deltaPoints > 0 || deltaMinutes > 0) {
+            await syncFocusEnd({
+              duration_minutes: deltaMinutes,
+              points: deltaPoints,
+              rank_after: currentRank.value
+            })
+          }
+        }
+
+        const latest = await getWeeklyStats(userStore.user.id)
+        if (latest) {
+          dailyPoints.value = latest.total_points || 0
+          if (latest.current_rank) {
+            currentRank.value = latest.current_rank as RankType
+          }
+          saveToStorage()
+        }
+      }
+    } catch (e) {
+      console.error('Sync failed:', e)
+    }
   }
 
   return {
@@ -166,6 +233,7 @@ export const useTimerStore = defineStore('timer', () => {
     tick,
     resetDaily,
     loadFromStorage,
-    saveToStorage
+    saveToStorage,
+    syncWithServer
   }
 })
