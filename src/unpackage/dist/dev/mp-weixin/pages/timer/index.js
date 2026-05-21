@@ -20,9 +20,9 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     let timerInterval = null;
     let audioCtx = null;
     const SOUND_URLS = {
-      rain: "/static/audio/rain.mp3",
-      wave: "/static/audio/wave.mp3",
-      bird: "/static/audio/bird.mp3"
+      rain: "https://tomatoclock.onrender.com/static/audio/rain.mp3",
+      wave: "https://tomatoclock.onrender.com/static/audio/wave.mp3",
+      bird: "https://tomatoclock.onrender.com/static/audio/bird.mp3"
     };
     function initAudio() {
       stopAudio();

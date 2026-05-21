@@ -127,9 +127,9 @@ let timerInterval: number | null = null
 let audioCtx: any = null
 
 const SOUND_URLS: Record<string, string> = {
-  rain: '/static/audio/rain.mp3',
-  wave: '/static/audio/wave.mp3',
-  bird: '/static/audio/bird.mp3'
+  rain: 'https://tomatoclock.onrender.com/static/audio/rain.mp3',
+  wave: 'https://tomatoclock.onrender.com/static/audio/wave.mp3',
+  bird: 'https://tomatoclock.onrender.com/static/audio/bird.mp3'
 }
 
 function initAudio() {
