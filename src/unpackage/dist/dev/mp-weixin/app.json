@@ -49,5 +49,6 @@
       }
     ]
   },
+  "lazyCodeLoading": "requiredComponents",
   "usingComponents": {}
 }

@@ -1,7 +1,7 @@
 <template>
   <view class="timer-container">
     <view class="timer-header">
-      <text class="timer-category">{{ categoryName }}</text>
+      <text class="timer-category">{{ headerTitle }}</text>
       <text class="timer-mode">{{ modeText }}</text>
     </view>
 
@@ -107,6 +107,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { onBackPress, onHide, onUnload, onShow } from '@dcloudio/uni-app'
 import { useTimerStore } from '@/stores/timer'
 import { useUserStore } from '@/stores/user'
 import { useTodoStore } from '@/stores/todo'
@@ -201,12 +202,57 @@ const currentMode = computed(() => timerStore.currentMode)
 const rankInfo = computed(() => RANK_CONFIG[currentRank.value])
 
 const categoryName = computed(() => CATEGORY_CONFIG[currentCategory.value].name)
-const modeText = computed(() => currentMode.value === 'strict' ? '专注模式' : '温和模式')
+const modeText = computed(() => {
+  if (timerStore.timerType === 'countup') return '计时模式'
+  return currentMode.value === 'strict' ? '专注模式' : '温和模式'
+})
+
+const todoTitle = computed(() => {
+  const id = todoStore.activeTodoId
+  if (!id) return ''
+  return todoStore.todos.find(t => t.id === id)?.title || ''
+})
+
+const headerTitle = computed(() => todoTitle.value || categoryName.value)
 
 const formattedTime = computed(() => {
-  const minutes = Math.floor(timeLeft.value / 60)
-  const seconds = timeLeft.value % 60
+  const secondsValue = timerStore.timerType === 'countup' ? timerStore.elapsedSeconds : timeLeft.value
+  const minutes = Math.floor(secondsValue / 60)
+  const seconds = secondsValue % 60
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+})
+
+function handleQuit(reason: 'hide' | 'unload' | 'back') {
+  if (!timerStore.isActive) return
+  const beforePenalty = timerStore.gentlePenalty
+  const res = timerStore.registerQuit()
+
+  if (res.mode === 'strict' && res.strictQuitTriggered) {
+    todoStore.clearActiveFocus()
+    stopAudio()
+    if (reason !== 'hide') {
+      uni.showToast({ title: '严格模式退出：积分已清零', icon: 'none' })
+    }
+    return
+  }
+
+  if (res.mode === 'gentle' && !beforePenalty && res.gentlePenalty) {
+    if (reason !== 'hide') {
+      uni.showToast({ title: '温和模式已退出3次，本次结算积分减半', icon: 'none' })
+    }
+  }
+}
+
+onHide(() => handleQuit('hide'))
+onShow(() => {
+  if (!timerStore.isActive) {
+    uni.switchTab({ url: '/pages/home/index' })
+  }
+})
+onUnload(() => handleQuit('unload'))
+onBackPress(() => {
+  handleQuit('back')
+  return false
 })
 
 const statusText = computed(() => {
@@ -216,6 +262,7 @@ const statusText = computed(() => {
 })
 
 const progressStyle = computed(() => {
+  if (timerStore.timerType === 'countup' || totalDuration.value <= 0) return {}
   const progress = ((totalDuration.value - timeLeft.value) / totalDuration.value) * 100
   const circumference = 2 * Math.PI * 140
   const offset = circumference - (progress / 100) * circumference
@@ -266,7 +313,8 @@ function showStopConfirm() {
 
 function endFocus() {
   stopAudio()
-  const elapsedSeconds = Math.max(0, totalDuration.value - timeLeft.value)
+  const elapsedSeconds =
+    timerStore.timerType === 'countup' ? timerStore.elapsedSeconds : Math.max(0, totalDuration.value - timeLeft.value)
   const finished = todoStore.finishActiveFocus(elapsedSeconds)
   todoFinish.value = finished ? { title: finished.title, seconds: finished.seconds } : null
   const result = timerStore.stopFocus()
@@ -324,7 +372,7 @@ onMounted(() => {
 
   timerInterval = setInterval(() => {
     timerStore.tick()
-    if (timeLeft.value === 0 && isActive.value) {
+    if (timerStore.timerType === 'countdown' && timeLeft.value === 0 && isActive.value) {
       endFocus()
     }
   }, 1000) as unknown as number

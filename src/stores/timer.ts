@@ -13,11 +13,19 @@ export const useTimerStore = defineStore('timer', () => {
   const sessions = ref<SessionRecord[]>([])
   const isActive = ref(false)
   const isPaused = ref(false)
+  const timerType = ref<'countdown' | 'countup'>('countdown')
   const timeLeft = ref(0)
   const totalDuration = ref(0)
   const targetTime = ref(0)
+  const focusStartTime = ref(0)
+  const pausedMs = ref(0)
+  const pauseStartedAt = ref(0)
+  const elapsedSeconds = ref(0)
   const currentCategory = ref<FocusCategory>('study')
   const currentMode = ref<'strict' | 'gentle'>('strict')
+  const quitCount = ref(0)
+  const gentlePenalty = ref(false)
+  const strictQuitTriggered = ref(false)
 
   function getWeekStartTs() {
     const now = new Date()
@@ -88,36 +96,104 @@ export const useTimerStore = defineStore('timer', () => {
   }
 
   function startFocus(duration: number, category: FocusCategory, mode: 'strict' | 'gentle') {
+    timerType.value = 'countdown'
     totalDuration.value = duration * 60
     timeLeft.value = duration * 60
     targetTime.value = Date.now() + duration * 60 * 1000
+    focusStartTime.value = Date.now()
+    pausedMs.value = 0
+    pauseStartedAt.value = 0
+    elapsedSeconds.value = 0
     currentCategory.value = category
     currentMode.value = mode
+    quitCount.value = 0
+    gentlePenalty.value = false
+    strictQuitTriggered.value = false
     isActive.value = true
     isPaused.value = false
   }
 
+  function startCountup(category: FocusCategory, mode: 'strict' | 'gentle') {
+    timerType.value = 'countup'
+    totalDuration.value = 0
+    timeLeft.value = 0
+    targetTime.value = 0
+    focusStartTime.value = Date.now()
+    pausedMs.value = 0
+    pauseStartedAt.value = 0
+    elapsedSeconds.value = 0
+    currentCategory.value = category
+    currentMode.value = mode
+    quitCount.value = 0
+    gentlePenalty.value = false
+    strictQuitTriggered.value = false
+    isActive.value = true
+    isPaused.value = false
+  }
+
+  function registerQuit() {
+    if (!isActive.value) {
+      return { mode: currentMode.value, quitCount: quitCount.value, gentlePenalty: gentlePenalty.value, strictQuitTriggered: strictQuitTriggered.value }
+    }
+
+    quitCount.value += 1
+    if (currentMode.value === 'strict') {
+      strictQuitTriggered.value = true
+      isActive.value = false
+      isPaused.value = false
+      resetDaily()
+      return { mode: currentMode.value, quitCount: quitCount.value, gentlePenalty: gentlePenalty.value, strictQuitTriggered: strictQuitTriggered.value }
+    }
+
+    if (quitCount.value >= 3) {
+      gentlePenalty.value = true
+    }
+
+    return { mode: currentMode.value, quitCount: quitCount.value, gentlePenalty: gentlePenalty.value, strictQuitTriggered: strictQuitTriggered.value }
+  }
+
   function pauseFocus() {
+    if (isPaused.value) return
     isPaused.value = true
+    if (timerType.value === 'countup') {
+      pauseStartedAt.value = Date.now()
+    }
   }
 
   function resumeFocus() {
+    if (!isPaused.value) return
     isPaused.value = false
-    targetTime.value = Date.now() + timeLeft.value * 1000
+    if (timerType.value === 'countdown') {
+      targetTime.value = Date.now() + timeLeft.value * 1000
+      return
+    }
+    if (pauseStartedAt.value > 0) {
+      pausedMs.value += Date.now() - pauseStartedAt.value
+      pauseStartedAt.value = 0
+    }
   }
 
   function stopFocus(): PromotionData & { wasPromoted: boolean } | null {
     isActive.value = false
     isPaused.value = false
     
-    const completedDuration = totalDuration.value - timeLeft.value
-    const minutes = Math.floor(completedDuration / 60)
+    const completedSeconds =
+      timerType.value === 'countup' ? elapsedSeconds.value : Math.max(0, totalDuration.value - timeLeft.value)
+    const minutes = Math.floor(completedSeconds / 60)
+
+    if (currentMode.value === 'strict' && strictQuitTriggered.value) {
+      return null
+    }
     
     if (minutes < 5) {
       return null
     }
 
-    const points = Math.floor(minutes * 1.2)
+    let multiplier = currentMode.value === 'strict' ? 1.2 : 1.0
+    if (currentMode.value === 'gentle' && gentlePenalty.value) {
+      multiplier *= 0.5
+    }
+    const points = Math.floor(minutes * multiplier)
     const oldRank = currentRank.value
     dailyPoints.value += points
 
@@ -131,7 +207,7 @@ export const useTimerStore = defineStore('timer', () => {
       duration: minutes,
       points,
       completed: true,
-      startTime: Date.now() - completedDuration * 1000
+      startTime: focusStartTime.value || Date.now() - completedSeconds * 1000
     }
     sessions.value.push(session)
     saveToStorage()
@@ -164,8 +240,15 @@ export const useTimerStore = defineStore('timer', () => {
 
   function tick() {
     if (isActive.value && !isPaused.value) {
-      const remaining = Math.max(0, Math.ceil((targetTime.value - Date.now()) / 1000))
-      timeLeft.value = remaining
+      if (timerType.value === 'countdown') {
+        const remaining = Math.max(0, Math.ceil((targetTime.value - Date.now()) / 1000))
+        timeLeft.value = remaining
+        elapsedSeconds.value = Math.max(0, totalDuration.value - timeLeft.value)
+        return
+      }
+
+      const seconds = Math.max(0, Math.floor((Date.now() - focusStartTime.value - pausedMs.value) / 1000))
+      elapsedSeconds.value = seconds
     }
   }
 
@@ -219,14 +302,21 @@ export const useTimerStore = defineStore('timer', () => {
     sessions,
     isActive,
     isPaused,
+    timerType,
     timeLeft,
     totalDuration,
+    elapsedSeconds,
     currentCategory,
     currentMode,
+    quitCount,
+    gentlePenalty,
+    strictQuitTriggered,
     nextRank,
     pointsToNextRank,
     progressToNextRank,
     startFocus,
+    startCountup,
+    registerQuit,
     pauseFocus,
     resumeFocus,
     stopFocus,

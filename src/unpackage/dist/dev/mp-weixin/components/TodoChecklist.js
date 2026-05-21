@@ -45,7 +45,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       if (timerStore.isActive)
         return;
       todoStore.startTodoFocus(id);
-      timerStore.startFocus(props.duration, props.category, props.mode);
+      timerStore.startCountup(props.category, props.mode);
       common_vendor.index.navigateTo({ url: "/pages/timer/index" });
     }
     return (_ctx, _cache) => {

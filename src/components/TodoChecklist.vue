@@ -123,7 +123,7 @@ function formatSeconds(totalSeconds: number) {
 function startFocusForTodo(id: string) {
   if (timerStore.isActive) return
   todoStore.startTodoFocus(id)
-  timerStore.startFocus(props.duration, props.category, props.mode)
+  timerStore.startCountup(props.category, props.mode)
   uni.navigateTo({ url: '/pages/timer/index' })
 }
 </script>

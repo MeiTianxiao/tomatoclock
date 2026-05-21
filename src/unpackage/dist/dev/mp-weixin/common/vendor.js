@@ -7152,7 +7152,7 @@ function isConsoleWritable() {
 function initRuntimeSocketService() {
   const hosts = "192.168.43.12,127.0.0.1";
   const port = "8090";
-  const id = "mp-weixin_Lw6doC";
+  const id = "mp-weixin_chtSV8";
   const lazy = typeof swan !== "undefined";
   let restoreError = lazy ? () => {
   } : initOnError();
@@ -8715,6 +8715,16 @@ const onLoad = /* @__PURE__ */ createLifeCycleHook(
   2
   /* HookFlags.PAGE */
 );
+const onUnload = /* @__PURE__ */ createLifeCycleHook(
+  ON_UNLOAD,
+  2
+  /* HookFlags.PAGE */
+);
+const onBackPress = /* @__PURE__ */ createLifeCycleHook(
+  ON_BACK_PRESS,
+  2
+  /* HookFlags.PAGE */
+);
 exports._export_sfc = _export_sfc;
 exports.computed = computed;
 exports.createPinia = createPinia;
@@ -8725,11 +8735,13 @@ exports.e = e;
 exports.f = f;
 exports.index = index;
 exports.o = o;
+exports.onBackPress = onBackPress;
 exports.onHide = onHide;
 exports.onLaunch = onLaunch;
 exports.onLoad = onLoad;
 exports.onMounted = onMounted;
 exports.onShow = onShow;
+exports.onUnload = onUnload;
 exports.onUnmounted = onUnmounted;
 exports.p = p;
 exports.ref = ref;

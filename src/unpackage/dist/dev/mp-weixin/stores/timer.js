@@ -10,11 +10,19 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
   const sessions = common_vendor.ref([]);
   const isActive = common_vendor.ref(false);
   const isPaused = common_vendor.ref(false);
+  const timerType = common_vendor.ref("countdown");
   const timeLeft = common_vendor.ref(0);
   const totalDuration = common_vendor.ref(0);
   const targetTime = common_vendor.ref(0);
+  const focusStartTime = common_vendor.ref(0);
+  const pausedMs = common_vendor.ref(0);
+  const pauseStartedAt = common_vendor.ref(0);
+  const elapsedSeconds = common_vendor.ref(0);
   const currentCategory = common_vendor.ref("study");
   const currentMode = common_vendor.ref("strict");
+  const quitCount = common_vendor.ref(0);
+  const gentlePenalty = common_vendor.ref(false);
+  const strictQuitTriggered = common_vendor.ref(false);
   function getWeekStartTs() {
     const now = /* @__PURE__ */ new Date();
     const dayOfWeek = now.getDay();
@@ -79,30 +87,93 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
     common_vendor.index.setStorageSync("timer", JSON.stringify(data));
   }
   function startFocus(duration, category, mode) {
+    timerType.value = "countdown";
     totalDuration.value = duration * 60;
     timeLeft.value = duration * 60;
     targetTime.value = Date.now() + duration * 60 * 1e3;
+    focusStartTime.value = Date.now();
+    pausedMs.value = 0;
+    pauseStartedAt.value = 0;
+    elapsedSeconds.value = 0;
     currentCategory.value = category;
     currentMode.value = mode;
+    quitCount.value = 0;
+    gentlePenalty.value = false;
+    strictQuitTriggered.value = false;
     isActive.value = true;
     isPaused.value = false;
   }
+  function startCountup(category, mode) {
+    timerType.value = "countup";
+    totalDuration.value = 0;
+    timeLeft.value = 0;
+    targetTime.value = 0;
+    focusStartTime.value = Date.now();
+    pausedMs.value = 0;
+    pauseStartedAt.value = 0;
+    elapsedSeconds.value = 0;
+    currentCategory.value = category;
+    currentMode.value = mode;
+    quitCount.value = 0;
+    gentlePenalty.value = false;
+    strictQuitTriggered.value = false;
+    isActive.value = true;
+    isPaused.value = false;
+  }
+  function registerQuit() {
+    if (!isActive.value) {
+      return { mode: currentMode.value, quitCount: quitCount.value, gentlePenalty: gentlePenalty.value, strictQuitTriggered: strictQuitTriggered.value };
+    }
+    quitCount.value += 1;
+    if (currentMode.value === "strict") {
+      strictQuitTriggered.value = true;
+      isActive.value = false;
+      isPaused.value = false;
+      resetDaily();
+      return { mode: currentMode.value, quitCount: quitCount.value, gentlePenalty: gentlePenalty.value, strictQuitTriggered: strictQuitTriggered.value };
+    }
+    if (quitCount.value >= 3) {
+      gentlePenalty.value = true;
+    }
+    return { mode: currentMode.value, quitCount: quitCount.value, gentlePenalty: gentlePenalty.value, strictQuitTriggered: strictQuitTriggered.value };
+  }
   function pauseFocus() {
+    if (isPaused.value)
+      return;
     isPaused.value = true;
+    if (timerType.value === "countup") {
+      pauseStartedAt.value = Date.now();
+    }
   }
   function resumeFocus() {
+    if (!isPaused.value)
+      return;
     isPaused.value = false;
-    targetTime.value = Date.now() + timeLeft.value * 1e3;
+    if (timerType.value === "countdown") {
+      targetTime.value = Date.now() + timeLeft.value * 1e3;
+      return;
+    }
+    if (pauseStartedAt.value > 0) {
+      pausedMs.value += Date.now() - pauseStartedAt.value;
+      pauseStartedAt.value = 0;
+    }
   }
   function stopFocus() {
     isActive.value = false;
     isPaused.value = false;
-    const completedDuration = totalDuration.value - timeLeft.value;
-    const minutes = Math.floor(completedDuration / 60);
+    const completedSeconds = timerType.value === "countup" ? elapsedSeconds.value : Math.max(0, totalDuration.value - timeLeft.value);
+    const minutes = Math.floor(completedSeconds / 60);
+    if (currentMode.value === "strict" && strictQuitTriggered.value) {
+      return null;
+    }
     if (minutes < 5) {
       return null;
     }
-    const points = Math.floor(minutes * 1.2);
+    let multiplier = currentMode.value === "strict" ? 1.2 : 1;
+    if (currentMode.value === "gentle" && gentlePenalty.value) {
+      multiplier *= 0.5;
+    }
+    const points = Math.floor(minutes * multiplier);
     const oldRank = currentRank.value;
     dailyPoints.value += points;
     const newRank = calculateRank();
@@ -114,7 +185,7 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
       duration: minutes,
       points,
       completed: true,
-      startTime: Date.now() - completedDuration * 1e3
+      startTime: focusStartTime.value || Date.now() - completedSeconds * 1e3
     };
     sessions.value.push(session);
     saveToStorage();
@@ -142,8 +213,14 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
   }
   function tick() {
     if (isActive.value && !isPaused.value) {
-      const remaining = Math.max(0, Math.ceil((targetTime.value - Date.now()) / 1e3));
-      timeLeft.value = remaining;
+      if (timerType.value === "countdown") {
+        const remaining = Math.max(0, Math.ceil((targetTime.value - Date.now()) / 1e3));
+        timeLeft.value = remaining;
+        elapsedSeconds.value = Math.max(0, totalDuration.value - timeLeft.value);
+        return;
+      }
+      const seconds = Math.max(0, Math.floor((Date.now() - focusStartTime.value - pausedMs.value) / 1e3));
+      elapsedSeconds.value = seconds;
     }
   }
   function resetDaily() {
@@ -184,7 +261,7 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
         }
       }
     } catch (e) {
-      common_vendor.index.__f__("error", "at stores/timer.ts:212", "Sync failed:", e);
+      common_vendor.index.__f__("error", "at stores/timer.ts:295", "Sync failed:", e);
     }
   }
   return {
@@ -193,14 +270,21 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
     sessions,
     isActive,
     isPaused,
+    timerType,
     timeLeft,
     totalDuration,
+    elapsedSeconds,
     currentCategory,
     currentMode,
+    quitCount,
+    gentlePenalty,
+    strictQuitTriggered,
     nextRank,
     pointsToNextRank,
     progressToNextRank,
     startFocus,
+    startCountup,
+    registerQuit,
     pauseFocus,
     resumeFocus,
     stopFocus,

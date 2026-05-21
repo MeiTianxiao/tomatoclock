@@ -89,11 +89,54 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const currentMode = common_vendor.computed(() => timerStore.currentMode);
     const rankInfo = common_vendor.computed(() => types_index.RANK_CONFIG[currentRank.value]);
     const categoryName = common_vendor.computed(() => types_index.CATEGORY_CONFIG[currentCategory.value].name);
-    const modeText = common_vendor.computed(() => currentMode.value === "strict" ? "专注模式" : "温和模式");
+    const modeText = common_vendor.computed(() => {
+      if (timerStore.timerType === "countup")
+        return "计时模式";
+      return currentMode.value === "strict" ? "专注模式" : "温和模式";
+    });
+    const todoTitle = common_vendor.computed(() => {
+      var _a;
+      const id = todoStore.activeTodoId;
+      if (!id)
+        return "";
+      return ((_a = todoStore.todos.find((t) => t.id === id)) == null ? void 0 : _a.title) || "";
+    });
+    const headerTitle = common_vendor.computed(() => todoTitle.value || categoryName.value);
     const formattedTime = common_vendor.computed(() => {
-      const minutes = Math.floor(timeLeft.value / 60);
-      const seconds = timeLeft.value % 60;
+      const secondsValue = timerStore.timerType === "countup" ? timerStore.elapsedSeconds : timeLeft.value;
+      const minutes = Math.floor(secondsValue / 60);
+      const seconds = secondsValue % 60;
       return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+    });
+    function handleQuit(reason) {
+      if (!timerStore.isActive)
+        return;
+      const beforePenalty = timerStore.gentlePenalty;
+      const res = timerStore.registerQuit();
+      if (res.mode === "strict" && res.strictQuitTriggered) {
+        todoStore.clearActiveFocus();
+        stopAudio();
+        if (reason !== "hide") {
+          common_vendor.index.showToast({ title: "严格模式退出：积分已清零", icon: "none" });
+        }
+        return;
+      }
+      if (res.mode === "gentle" && !beforePenalty && res.gentlePenalty) {
+        if (reason !== "hide") {
+          common_vendor.index.showToast({ title: "温和模式已退出3次，本次结算积分减半", icon: "none" });
+        }
+      }
+    }
+    common_vendor.onHide(() => handleQuit("hide"));
+    common_vendor.onShow(() => {
+      if (!timerStore.isActive) {
+        common_vendor.index.switchTab({ url: "/pages/home/index" });
+      }
+    });
+    common_vendor.onUnload(() => handleQuit("unload"));
+    common_vendor.onBackPress(() => {
+      handleQuit("back");
+      return false;
     });
     const statusText = common_vendor.computed(() => {
       if (!isActive.value)
@@ -103,6 +146,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       return "专注中...";
     });
     const progressStyle = common_vendor.computed(() => {
+      if (timerStore.timerType === "countup" || totalDuration.value <= 0)
+        return {};
       const progress = (totalDuration.value - timeLeft.value) / totalDuration.value * 100;
       const circumference = 2 * Math.PI * 140;
       const offset = circumference - progress / 100 * circumference;
@@ -147,7 +192,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     }
     function endFocus() {
       stopAudio();
-      const elapsedSeconds = Math.max(0, totalDuration.value - timeLeft.value);
+      const elapsedSeconds = timerStore.timerType === "countup" ? timerStore.elapsedSeconds : Math.max(0, totalDuration.value - timeLeft.value);
       const finished = todoStore.finishActiveFocus(elapsedSeconds);
       todoFinish.value = finished ? { title: finished.title, seconds: finished.seconds } : null;
       const result = timerStore.stopFocus();
@@ -196,7 +241,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       initAudio();
       timerInterval = setInterval(() => {
         timerStore.tick();
-        if (timeLeft.value === 0 && isActive.value) {
+        if (timerStore.timerType === "countdown" && timeLeft.value === 0 && isActive.value) {
           endFocus();
         }
       }, 1e3);
@@ -209,7 +254,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: common_vendor.t(categoryName.value),
+        a: common_vendor.t(headerTitle.value),
         b: common_vendor.t(modeText.value),
         c: common_vendor.s(progressStyle.value),
         d: common_vendor.t(formattedTime.value),
@@ -221,9 +266,9 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }, isPaused.value ? {
         j: common_vendor.o(resumeFocus, "45")
       } : {
-        k: common_vendor.o(pauseFocus, "68")
+        k: common_vendor.o(pauseFocus, "04")
       }, {
-        l: common_vendor.o(showStopConfirm, "e4"),
+        l: common_vendor.o(showStopConfirm, "49"),
         m: common_vendor.t(currentTip.value),
         n: showPromotion.value && promotionData.value
       }, showPromotion.value && promotionData.value ? common_vendor.e({
@@ -241,7 +286,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         x: common_vendor.t(todoFinish.value.title),
         y: common_vendor.t(formatSeconds(todoFinish.value.seconds))
       } : {}, {
-        z: common_vendor.o(closePromotion, "07")
+        z: common_vendor.o(closePromotion, "0d")
       }) : {});
     };
   }
