@@ -1,6 +1,9 @@
 <template>
   <view class="page">
-    <text class="page-title">好友</text>
+    <view class="page-head">
+      <text class="page-title">好友</text>
+      <button v-if="isWeixinMp" class="mini-btn" @click="enableFriendNotifications">开启通知</button>
+    </view>
 
     <view class="card">
       <view class="card-head">
@@ -115,6 +118,24 @@ const friends = ref<User[]>([])
 
 const myInviteCode = computed(() => (userStore.user as any)?.invite_code || '')
 
+async function enableFriendNotifications() {
+  if (!isWeixinMp) return
+  try {
+    const res: any = await uni.requestSubscribeMessage({
+      tmplIds: [
+        't_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU',
+        '83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU'
+      ]
+    })
+    const ok =
+      res?.['t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU'] === 'accept' ||
+      res?.['83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU'] === 'accept'
+    uni.showToast({ title: ok ? '已开启通知' : '未开启通知', icon: 'none' })
+  } catch (e: any) {
+    uni.showToast({ title: e?.errMsg || '开启失败', icon: 'none' })
+  }
+}
+
 async function refreshUser() {
   try {
     const u = await getUserInfo()
@@ -216,15 +237,6 @@ onMounted(async () => {
     return
   }
 
-  if (isWeixinMp) {
-    uni.requestSubscribeMessage({
-      tmplIds: [
-        't_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU',
-        '83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU'
-      ]
-    })
-  }
-
   await refreshUser()
   await loadAll()
 })
@@ -238,13 +250,20 @@ onMounted(async () => {
   background: #f2f5ff;
 }
 
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10rpx 0 26rpx;
+}
+
 .page-title {
   display: block;
   font-size: 40rpx;
   font-weight: 900;
   color: #0f172a;
-  text-align: center;
-  margin: 10rpx 0 26rpx;
+  text-align: left;
+  margin: 0;
 }
 
 .card {

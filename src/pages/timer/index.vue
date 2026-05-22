@@ -164,13 +164,14 @@ function initAudio() {
                 if (res.statusCode === 200 && (res as any).tempFilePath) {
                   playSrc((res as any).tempFilePath)
                 } else {
-                  stopAudio()
-                  uni.showToast({ title: '白噪音下载失败', icon: 'none' })
+                  playSrc(url)
+                  uni.showToast({ title: `白噪音下载失败(${res.statusCode})，已尝试直连播放`, icon: 'none' })
                 }
               },
-              fail: () => {
-                stopAudio()
-                uni.showToast({ title: '白噪音下载失败', icon: 'none' })
+              fail: (err: any) => {
+                playSrc(url)
+                const msg = err?.errMsg || '下载失败'
+                uni.showToast({ title: `${msg}，已尝试直连播放`, icon: 'none' })
               }
             })
           } else {
