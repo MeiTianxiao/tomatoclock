@@ -4,13 +4,19 @@
   box-sizing: border-box;
   background: #f2f5ff;
 }
+.page-head.data-v-78842521 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10rpx 0 26rpx;
+}
 .page-title.data-v-78842521 {
   display: block;
   font-size: 40rpx;
   font-weight: 900;
   color: #0f172a;
-  text-align: center;
-  margin: 10rpx 0 26rpx;
+  text-align: left;
+  margin: 0;
 }
 .card.data-v-78842521 {
   background: #fff;

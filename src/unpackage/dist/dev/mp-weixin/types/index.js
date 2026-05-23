@@ -1,11 +1,11 @@
 "use strict";
 const RANK_CONFIG = {
-  intern: { name: "实习生", points: 0, color: "#9ca3af", icon: "👶", avatar: "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=A+cute+cat+wearing+a+plain+white+shirt,+office+setting,+portrait,+flat+illustration+style,+cute,+professional&image_size=square" },
-  junior: { name: "初级开发", points: 100, color: "#10b981", icon: "💻", avatar: "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=A+cute+cat+wearing+a+white+shirt+and+a+simple+suit+jacket,+office+setting,+portrait,+flat+illustration+style,+cute,+professional&image_size=square" },
-  middle: { name: "中级开发", points: 300, color: "#3b82f6", icon: "🔧", avatar: "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=A+cute+cat+wearing+a+suit+and+a+necktie,+office+setting,+portrait,+flat+illustration+style,+cute,+professional&image_size=square" },
-  senior: { name: "高级开发", points: 600, color: "#8b5cf6", icon: "⚡", avatar: "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=A+cute+cat+wearing+a+suit,+necktie,+and+stylish+glasses,+office+setting,+portrait,+flat+illustration+style,+cute,+professional&image_size=square" },
-  expert: { name: "技术专家", points: 1e3, color: "#f59e0b", icon: "🌟", avatar: "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=A+cute+cat+wearing+a+suit,+necktie,+glasses,+holding+a+laptop,+office+setting,+portrait,+flat+illustration+style,+cute,+professional&image_size=square" },
-  master: { name: "技术总监", points: 1500, color: "#ef4444", icon: "👑", avatar: "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=A+cute+boss+cat+wearing+a+premium+suit,+necktie,+glasses,+holding+a+laptop,+sitting+in+a+leather+boss+chair,+office+setting,+portrait,+flat+illustration+style,+cute,+professional&image_size=square" }
+  intern: { name: "实习生", points: 0, color: "#9ca3af", icon: "👶", avatar: "https://tomatoclock.onrender.com/static/ranks/intern.png" },
+  junior: { name: "科员", points: 100, color: "#10b981", icon: "🧑‍�", avatar: "https://tomatoclock.onrender.com/static/ranks/junior.png" },
+  middle: { name: "科长", points: 300, color: "#3b82f6", icon: "�", avatar: "https://tomatoclock.onrender.com/static/ranks/middle.png" },
+  senior: { name: "处长", points: 600, color: "#8b5cf6", icon: "🏢", avatar: "https://tomatoclock.onrender.com/static/ranks/senior.png" },
+  expert: { name: "副局长", points: 1e3, color: "#f59e0b", icon: "⭐", avatar: "https://tomatoclock.onrender.com/static/ranks/expert.png" },
+  master: { name: "局长", points: 1500, color: "#ef4444", icon: "👑", avatar: "https://tomatoclock.onrender.com/static/ranks/master.png" }
 };
 const CATEGORY_CONFIG = {
   study: { name: "学习", color: "#3b82f6", icon: "📚" },

@@ -17,6 +17,22 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       var _a;
       return ((_a = userStore.user) == null ? void 0 : _a.invite_code) || "";
     });
+    async function enableFriendNotifications() {
+      if (!isWeixinMp)
+        return;
+      try {
+        const res = await common_vendor.index.requestSubscribeMessage({
+          tmplIds: [
+            "t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU",
+            "83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU"
+          ]
+        });
+        const ok = (res == null ? void 0 : res["t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU"]) === "accept" || (res == null ? void 0 : res["83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU"]) === "accept";
+        common_vendor.index.showToast({ title: ok ? "已开启通知" : "未开启通知", icon: "none" });
+      } catch (e) {
+        common_vendor.index.showToast({ title: (e == null ? void 0 : e.errMsg) || "开启失败", icon: "none" });
+      }
+    }
     async function refreshUser() {
       try {
         const u = await api_user.getUserInfo();
@@ -109,31 +125,27 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         common_vendor.index.navigateTo({ url: "/pages/auth/index" });
         return;
       }
-      if (isWeixinMp) {
-        common_vendor.index.requestSubscribeMessage({
-          tmplIds: [
-            "t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU",
-            "83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU"
-          ]
-        });
-      }
       await refreshUser();
       await loadAll();
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: common_vendor.o(copyInviteCode, "74"),
-        b: !myInviteCode.value,
-        c: common_vendor.t(myInviteCode.value || "加载中..."),
-        d: inviteInput.value,
-        e: common_vendor.o(($event) => inviteInput.value = $event.detail.value, "86"),
-        f: common_vendor.t(inviteLoading.value ? "发送中..." : "发送"),
-        g: inviteLoading.value,
-        h: common_vendor.o(sendInvite, "1d"),
-        i: common_vendor.t(invites.value.incoming.length),
-        j: invites.value.incoming.length
+        a: common_vendor.unref(isWeixinMp)
+      }, common_vendor.unref(isWeixinMp) ? {
+        b: common_vendor.o(enableFriendNotifications, "b8")
+      } : {}, {
+        c: common_vendor.o(copyInviteCode, "6d"),
+        d: !myInviteCode.value,
+        e: common_vendor.t(myInviteCode.value || "加载中..."),
+        f: inviteInput.value,
+        g: common_vendor.o(($event) => inviteInput.value = $event.detail.value, "e1"),
+        h: common_vendor.t(inviteLoading.value ? "发送中..." : "发送"),
+        i: inviteLoading.value,
+        j: common_vendor.o(sendInvite, "52"),
+        k: common_vendor.t(invites.value.incoming.length),
+        l: invites.value.incoming.length
       }, invites.value.incoming.length ? {
-        k: common_vendor.f(invites.value.incoming, (item, k0, i0) => {
+        m: common_vendor.f(invites.value.incoming, (item, k0, i0) => {
           var _a, _b, _c, _d;
           return common_vendor.e({
             a: (_a = item.inviter) == null ? void 0 : _a.avatar_url
@@ -150,10 +162,10 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           });
         })
       } : {}, {
-        l: common_vendor.t(invites.value.outgoing.length),
-        m: invites.value.outgoing.length
+        n: common_vendor.t(invites.value.outgoing.length),
+        o: invites.value.outgoing.length
       }, invites.value.outgoing.length ? {
-        n: common_vendor.f(invites.value.outgoing, (item, k0, i0) => {
+        p: common_vendor.f(invites.value.outgoing, (item, k0, i0) => {
           var _a, _b, _c;
           return common_vendor.e({
             a: (_a = item.invitee) == null ? void 0 : _a.avatar_url
@@ -165,10 +177,10 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           });
         })
       } : {}, {
-        o: common_vendor.t(friends.value.length),
-        p: friends.value.length
+        q: common_vendor.t(friends.value.length),
+        r: friends.value.length
       }, friends.value.length ? {
-        q: common_vendor.f(friends.value, (u, k0, i0) => {
+        s: common_vendor.f(friends.value, (u, k0, i0) => {
           return common_vendor.e({
             a: u.avatar_url
           }, u.avatar_url ? {

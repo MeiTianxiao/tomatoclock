@@ -6,6 +6,10 @@ function getBaseURLMeta() {
   const wxAny = globalThis.wx;
   const isWeixinMp = !!wxAny && typeof wxAny.getAccountInfoSync === "function";
   if (isWeixinMp) {
+    const dev = common_vendor.index.getStorageSync("DEV_MP_API_BASE_URL");
+    if (typeof dev === "string" && /^https?:\/\//.test(dev)) {
+      return { baseURL: dev, needsDevConfig: false };
+    }
     const prod = common_vendor.index.getStorageSync("PROD_API_BASE_URL");
     if (typeof prod === "string" && /^https?:\/\//.test(prod)) {
       return { baseURL: prod, needsDevConfig: false };
@@ -58,6 +62,7 @@ async function request(url, options = {}) {
       },
       fail: (err) => {
         const msg = (err == null ? void 0 : err.errMsg) || "";
+        const isNameNotResolved = msg.includes("ERR_NAME_NOT_RESOLVED");
         const isTimeout = msg.includes("timeout");
         const shouldRetry = isTimeout && !hasRetriedWakeup;
         if (shouldRetry) {
@@ -92,6 +97,21 @@ async function request(url, options = {}) {
               reject(err2);
             }
           });
+          return;
+        }
+        if (isNameNotResolved) {
+          common_vendor.index.showModal({
+            title: "登录失败",
+            content: "域名解析失败（ERR_NAME_NOT_RESOLVED）。这通常是当前网络无法解析 onrender 域名导致。\n\n建议：切换网络（手机热点/移动数据）或在“开发配置”里改用可访问的接口域名。",
+            confirmText: "去配置",
+            cancelText: "知道了",
+            success: (res) => {
+              if (res.confirm) {
+                common_vendor.index.navigateTo({ url: "/pages/dev-api/index" });
+              }
+            }
+          });
+          reject(err);
           return;
         }
         common_vendor.index.showToast({ title: "网络请求失败", icon: "none" });

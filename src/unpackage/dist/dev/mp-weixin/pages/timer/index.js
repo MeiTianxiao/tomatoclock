@@ -54,13 +54,14 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
                     if (res.statusCode === 200 && res.tempFilePath) {
                       playSrc(res.tempFilePath);
                     } else {
-                      stopAudio();
-                      common_vendor.index.showToast({ title: "白噪音下载失败", icon: "none" });
+                      playSrc(url);
+                      common_vendor.index.showToast({ title: `白噪音下载失败(${res.statusCode})，已尝试直连播放`, icon: "none" });
                     }
                   },
-                  fail: () => {
-                    stopAudio();
-                    common_vendor.index.showToast({ title: "白噪音下载失败", icon: "none" });
+                  fail: (err) => {
+                    playSrc(url);
+                    const msg = (err == null ? void 0 : err.errMsg) || "下载失败";
+                    common_vendor.index.showToast({ title: `${msg}，已尝试直连播放`, icon: "none" });
                   }
                 });
               } else {
