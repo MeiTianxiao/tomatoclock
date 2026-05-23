@@ -18,10 +18,10 @@
     <view class="timer-info">
       <view class="info-item">
         <text class="info-value">{{ dailyPoints }}</text>
-        <text class="info-label">今日积分</text>
+        <text class="info-label">总积分</text>
       </view>
       <view class="info-item">
-        <text class="info-value">{{ rankInfo.icon }}</text>
+        <image class="rank-img" :src="rankInfo.avatar" mode="aspectFill" />
         <text class="info-label">{{ rankInfo.name }}</text>
       </view>
     </view>
@@ -43,7 +43,7 @@
     </view>
 
     <view class="tips-section">
-      <text class="tips-title">💡 小贴士</text>
+      <text class="tips-title">💡 申论名句</text>
       <text class="tips-content">{{ currentTip }}</text>
     </view>
 
@@ -274,17 +274,19 @@ const progressStyle = computed(() => {
 })
 
 const tips = [
-  '保持专注，远离手机干扰',
-  '合理休息，保持高效工作',
-  '设定清晰目标，提升效率',
-  '保持良好的工作环境',
-  '多喝水，保持身体健康'
+  '为政之道，修身为本。',
+  '道虽迩，不行不至；事虽小，不为不成。',
+  '民惟邦本，本固邦宁。',
+  '治国有常，而利民为本。',
+  '利民之事，丝发必兴；厉民之事，毫末必去。',
+  '不驰于空想，不骛于虚声。',
+  '天下大事，必作于细。',
+  '功崇惟志，业广惟勤。',
+  '为者常成，行者常至。',
+  '不积跬步，无以至千里。'
 ]
 
-const currentTip = computed(() => {
-  const index = Math.floor(Date.now() / 30000) % tips.length
-  return tips[index]
-})
+const currentTip = ref('')
 
 function pauseFocus() {
   timerStore.pauseFocus()
@@ -369,6 +371,7 @@ onMounted(() => {
     return
   }
 
+  currentTip.value = tips[Math.floor(Math.random() * tips.length)]
   initAudio()
 
   timerInterval = setInterval(() => {
@@ -489,6 +492,15 @@ onUnmounted(() => {
   font-weight: 700;
   color: #fff;
   display: block;
+}
+
+.rank-img {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 32rpx;
+  display: block;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .info-label {

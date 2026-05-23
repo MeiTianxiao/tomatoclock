@@ -158,16 +158,18 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       };
     });
     const tips = [
-      "保持专注，远离手机干扰",
-      "合理休息，保持高效工作",
-      "设定清晰目标，提升效率",
-      "保持良好的工作环境",
-      "多喝水，保持身体健康"
+      "为政之道，修身为本。",
+      "道虽迩，不行不至；事虽小，不为不成。",
+      "民惟邦本，本固邦宁。",
+      "治国有常，而利民为本。",
+      "利民之事，丝发必兴；厉民之事，毫末必去。",
+      "不驰于空想，不骛于虚声。",
+      "天下大事，必作于细。",
+      "功崇惟志，业广惟勤。",
+      "为者常成，行者常至。",
+      "不积跬步，无以至千里。"
     ];
-    const currentTip = common_vendor.computed(() => {
-      const index = Math.floor(Date.now() / 3e4) % tips.length;
-      return tips[index];
-    });
+    const currentTip = common_vendor.ref("");
     function pauseFocus() {
       timerStore.pauseFocus();
       if (audioCtx) {
@@ -239,6 +241,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         common_vendor.index.navigateBack();
         return;
       }
+      currentTip.value = tips[Math.floor(Math.random() * tips.length)];
       initAudio();
       timerInterval = setInterval(() => {
         timerStore.tick();
@@ -261,15 +264,15 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         d: common_vendor.t(formattedTime.value),
         e: common_vendor.t(statusText.value),
         f: common_vendor.t(dailyPoints.value),
-        g: common_vendor.t(rankInfo.value.icon),
+        g: rankInfo.value.avatar,
         h: common_vendor.t(rankInfo.value.name),
         i: isPaused.value
       }, isPaused.value ? {
-        j: common_vendor.o(resumeFocus, "45")
+        j: common_vendor.o(resumeFocus, "f4")
       } : {
-        k: common_vendor.o(pauseFocus, "04")
+        k: common_vendor.o(pauseFocus, "6c")
       }, {
-        l: common_vendor.o(showStopConfirm, "49"),
+        l: common_vendor.o(showStopConfirm, "25"),
         m: common_vendor.t(currentTip.value),
         n: showPromotion.value && promotionData.value
       }, showPromotion.value && promotionData.value ? common_vendor.e({
@@ -287,7 +290,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         x: common_vendor.t(todoFinish.value.title),
         y: common_vendor.t(formatSeconds(todoFinish.value.seconds))
       } : {}, {
-        z: common_vendor.o(closePromotion, "0d")
+        z: common_vendor.o(closePromotion, "31")
       }) : {});
     };
   }

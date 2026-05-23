@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="header">
-      <text class="title">双人自习室</text>
+      <text class="title">自习室</text>
       <text class="subtitle">与好友一起专注，共同进步</text>
     </view>
 

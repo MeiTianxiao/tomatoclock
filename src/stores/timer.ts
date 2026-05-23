@@ -189,11 +189,10 @@ export const useTimerStore = defineStore('timer', () => {
       return null
     }
 
-    let multiplier = currentMode.value === 'strict' ? 1.2 : 1.0
+    let points = minutes
     if (currentMode.value === 'gentle' && gentlePenalty.value) {
-      multiplier *= 0.5
+      points = Math.floor(points * 0.5)
     }
-    const points = Math.floor(minutes * multiplier)
     const oldRank = currentRank.value
     dailyPoints.value += points
 

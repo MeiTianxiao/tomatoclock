@@ -120,6 +120,21 @@ const myInviteCode = computed(() => (userStore.user as any)?.invite_code || '')
 
 async function enableFriendNotifications() {
   if (!isWeixinMp) return
+  const settingsStr = uni.getStorageSync('app-settings')
+  const notificationsEnabled = (() => {
+    if (!settingsStr) return true
+    try {
+      const s = JSON.parse(settingsStr)
+      return s.notifications !== false
+    } catch {
+      return true
+    }
+  })()
+  if (!notificationsEnabled) {
+    uni.showToast({ title: '已关闭提醒通知', icon: 'none' })
+    return
+  }
+
   try {
     const res: any = await uni.requestSubscribeMessage({
       tmplIds: [
@@ -190,6 +205,21 @@ async function sendInvite() {
   }
 
   if (isWeixinMp) {
+    const settingsStr = uni.getStorageSync('app-settings')
+    const notificationsEnabled = (() => {
+      if (!settingsStr) return true
+      try {
+        const s = JSON.parse(settingsStr)
+        return s.notifications !== false
+      } catch {
+        return true
+      }
+    })()
+    if (!notificationsEnabled) {
+      performSend()
+      return
+    }
+
     uni.requestSubscribeMessage({
       tmplIds: [
         't_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU',

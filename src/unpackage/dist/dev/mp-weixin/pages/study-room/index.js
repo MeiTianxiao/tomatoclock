@@ -134,14 +134,14 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         a: !inRoom.value
       }, !inRoom.value ? {
         b: roomCode.value,
-        c: common_vendor.o(($event) => roomCode.value = $event.detail.value, "d9"),
+        c: common_vendor.o(($event) => roomCode.value = $event.detail.value, "42"),
         d: loading.value,
-        e: common_vendor.o(joinRoom, "39"),
+        e: common_vendor.o(joinRoom, "3c"),
         f: loading.value,
-        g: common_vendor.o(createRoom, "e8")
+        g: common_vendor.o(createRoom, "77")
       } : {
         h: common_vendor.t(currentRoom.value),
-        i: common_vendor.o(copyCode, "dd"),
+        i: common_vendor.o(copyCode, "72"),
         j: common_vendor.t(members.value.length),
         k: common_vendor.f(members.value, (m, k0, i0) => {
           return {
@@ -150,7 +150,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             c: m.id
           };
         }),
-        l: common_vendor.o(leaveRoom, "02")
+        l: common_vendor.o(leaveRoom, "21")
       });
     };
   }

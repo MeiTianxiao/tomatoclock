@@ -166,7 +166,7 @@ export function HomePage({ currentRank, dailyPoints, totalMinutes, onStartFocus 
                 严格模式
               </div>
               <div className="text-xs text-gray-500">
-                退出则清零当日所有积分，积分×1.2倍
+                退出则清零当日所有积分
               </div>
             </button>
           </div>

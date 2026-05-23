@@ -74,14 +74,30 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     });
     function startFocus() {
       todoStore.clearActiveFocus();
+      const settingsStr = common_vendor.index.getStorageSync("app-settings");
+      const notificationsEnabled = (() => {
+        if (!settingsStr)
+          return true;
+        try {
+          const s = JSON.parse(settingsStr);
+          return s.notifications !== false;
+        } catch {
+          return true;
+        }
+      })();
       if (isWeixinMp) {
-        common_vendor.index.requestSubscribeMessage({
-          tmplIds: ["Q_caCI_KtwEuo1xG8JgyUU4pkdVHsnN4JUsZFB52uTo"],
-          complete: () => {
-            timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value);
-            common_vendor.index.navigateTo({ url: "/pages/timer/index" });
-          }
-        });
+        if (notificationsEnabled) {
+          common_vendor.index.requestSubscribeMessage({
+            tmplIds: ["Q_caCI_KtwEuo1xG8JgyUU4pkdVHsnN4JUsZFB52uTo"],
+            complete: () => {
+              timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value);
+              common_vendor.index.navigateTo({ url: "/pages/timer/index" });
+            }
+          });
+        } else {
+          timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value);
+          common_vendor.index.navigateTo({ url: "/pages/timer/index" });
+        }
       } else {
         timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value);
         common_vendor.index.navigateTo({ url: "/pages/timer/index" });

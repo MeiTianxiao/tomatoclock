@@ -20,6 +20,21 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     async function enableFriendNotifications() {
       if (!isWeixinMp)
         return;
+      const settingsStr = common_vendor.index.getStorageSync("app-settings");
+      const notificationsEnabled = (() => {
+        if (!settingsStr)
+          return true;
+        try {
+          const s = JSON.parse(settingsStr);
+          return s.notifications !== false;
+        } catch {
+          return true;
+        }
+      })();
+      if (!notificationsEnabled) {
+        common_vendor.index.showToast({ title: "已关闭提醒通知", icon: "none" });
+        return;
+      }
       try {
         const res = await common_vendor.index.requestSubscribeMessage({
           tmplIds: [
@@ -82,6 +97,21 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         }
       };
       if (isWeixinMp) {
+        const settingsStr = common_vendor.index.getStorageSync("app-settings");
+        const notificationsEnabled = (() => {
+          if (!settingsStr)
+            return true;
+          try {
+            const s = JSON.parse(settingsStr);
+            return s.notifications !== false;
+          } catch {
+            return true;
+          }
+        })();
+        if (!notificationsEnabled) {
+          performSend();
+          return;
+        }
         common_vendor.index.requestSubscribeMessage({
           tmplIds: [
             "t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU",

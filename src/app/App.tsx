@@ -39,7 +39,7 @@ export default function App() {
         await db.saveFocusSession({
           user_id: currentUser.id,
           category: timer.category,
-          duration_minutes: result.earnedPoints / 1.2,
+          duration_minutes: result.earnedPoints,
           points_earned: result.earnedPoints,
           mode: timer.mode,
           rank_before: result.oldRank,

@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>专注软件开发需求 - 项目总览</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --card: rgba(255, 255, 255, 0.06);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.7);
+        --border: rgba(255, 255, 255, 0.12);
+        --accent: #3b82f6;
+        --accent2: #8b5cf6;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "PingFang SC",
+          "Microsoft YaHei", "Noto Sans CJK SC";
+        background: radial-gradient(1200px 800px at 10% 10%, rgba(59, 130, 246, 0.35), transparent 60%),
+          radial-gradient(1200px 800px at 90% 20%, rgba(139, 92, 246, 0.35), transparent 60%),
+          radial-gradient(1200px 800px at 40% 90%, rgba(236, 72, 153, 0.18), transparent 60%),
+          var(--bg);
+        color: var(--text);
+      }
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 40px 20px 80px;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 10px;
+        letter-spacing: 0.2px;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+        margin-bottom: 28px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      @media (min-width: 920px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 18px 18px;
+        backdrop-filter: blur(10px);
+      }
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 18px;
+      }
+      .card h3 {
+        margin: 14px 0 8px;
+        font-size: 15px;
+        color: rgba(255, 255, 255, 0.9);
+      }
+      .card p,
+      .card li {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+      code,
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      }
+      a {
+        color: rgba(147, 197, 253, 0.95);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .kvs {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        gap: 8px 12px;
+      }
+      .k {
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 13px;
+      }
+      .v {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid var(--border);
+        color: rgba(255, 255, 255, 0.86);
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        margin-right: 8px;
+        margin-top: 6px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .mermaid {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 12px;
+        overflow: auto;
+      }
+      .toc a {
+        display: inline-block;
+        margin-right: 12px;
+        margin-top: 6px;
+        font-size: 13px;
+        color: rgba(191, 219, 254, 0.95);
+      }
+      .section {
+        margin-top: 16px;
+      }
+      .filelist li {
+        margin: 6px 0;
+      }
+      .note {
+        border-left: 3px solid var(--accent);
+        padding-left: 12px;
+        margin: 10px 0;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ startOnLoad: true, theme: "dark" });
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>专注软件开发需求 - 项目总览</h1>
+      <div class="meta">
+        本文档用于从“整体链路”的角度解释项目结构、页面/状态/接口如何串起来，以及各功能的实现入口在哪里。<br />
+        入口目录：<code>src/</code>（uni-app + Vue3）与 <code>server/</code>（Node/Express）。<br />
+        建议使用 VSCode 打开本 HTML 并点击文件链接快速跳转。
+      </div>
+
+      <div class="card toc">
+        <h2>目录</h2>
+        <a href="#arch">整体架构</a>
+        <a href="#routes">页面与路由</a>
+        <a href="#auth">登录</a>
+        <a href="#focus">专注计时</a>
+        <a href="#rank">职级与晋升</a>
+        <a href="#todo">待办 + 计时</a>
+        <a href="#friends">好友与通知</a>
+        <a href="#studyroom">自习室</a>
+        <a href="#audio">白噪音</a>
+        <a href="#request">网络请求封装</a>
+      </div>
+
+      <div id="arch" class="card section">
+        <h2>整体架构</h2>
+        <div class="kvs">
+          <div class="k">前端</div>
+          <div class="v">
+            uni-app + Vue3 页面在 <code>src/pages/</code>；Pinia 状态在 <code>src/stores/</code>；请求封装在
+            <code>src/utils/request.ts</code>
+          </div>
+          <div class="k">后端</div>
+          <div class="v">
+            Express 服务在 <code>server/index.js</code>；可接 Supabase（环境变量配置后启用）；静态托管目录
+            <code>server/public/</code>（用于音频/职级头像）
+          </div>
+          <div class="k">数据库</div>
+          <div class="v">
+            Supabase：users / weekly_stats / focus_sessions / friends / friend_invites 等（schema 参考
+            <code>src/app/database/schema.sql</code>）
+          </div>
+        </div>
+        <div class="mermaid">
+          graph TD
+            A[小程序前端 src/pages/*] -->|request.ts| B[后端 server/index.js /api/*]
+            B -->|Supabase SDK| C[(Supabase DB)]
+            B -->|静态资源 /static/*| D[server/public/*]
+            A -->|本地存储| E[uni.getStorageSync]
+        </div>
+      </div>
+
+      <div id="routes" class="card section">
+        <h2>页面与路由（pages.json）</h2>
+        <p>
+          路由由 <code>src/pages.json</code> 定义，tabBar 页面为 home/leaderboard/stats/settings。
+        </p>
+        <ul class="filelist">
+          <li><a href="../src/pages.json">src/pages.json</a></li>
+          <li><a href="../src/pages/home/index.vue">src/pages/home/index.vue</a></li>
+          <li><a href="../src/pages/timer/index.vue">src/pages/timer/index.vue</a></li>
+          <li><a href="../src/pages/friends/index.vue">src/pages/friends/index.vue</a></li>
+          <li><a href="../src/pages/study-room/index.vue">src/pages/study-room/index.vue</a></li>
+        </ul>
+        <div class="mermaid">
+          graph LR
+            Home[首页 pages/home] -->|开始专注| Timer[专注页 pages/timer]
+            Home --> Leaderboard[排行榜 pages/leaderboard]
+            Home --> Stats[统计 pages/stats]
+            Home --> Settings[设置 pages/settings]
+            Settings --> Friends[好友 pages/friends]
+            Home --> StudyRoom[自习室 pages/study-room]
+        </div>
+      </div>
+
+      <div id="auth" class="card section">
+        <h2>登录（微信一键登录链路）</h2>
+        <p>核心流程：小程序 wx.login 获取 code → 后端 /api/wechat/login 换 openid → 绑定/创建用户 → 返回 token。</p>
+        <h3>关键文件</h3>
+        <ul class="filelist">
+          <li><a href="../src/pages/auth/index.vue">src/pages/auth/index.vue</a></li>
+          <li><a href="../src/api/user.ts">src/api/user.ts</a></li>
+          <li><a href="../src/utils/request.ts">src/utils/request.ts</a></li>
+          <li><a href="../server/index.js">server/index.js</a></li>
+        </ul>
+        <div class="mermaid">
+          sequenceDiagram
+            participant FE as 小程序
+            participant API as server/index.js
+            participant WX as 微信API
+            participant DB as Supabase
+            FE->>WX: wx.login()
+            WX-->>FE: code
+            FE->>API: POST /api/wechat/login {code}
+            API->>WX: jscode2session(code)
+            WX-->>API: openid, session_key
+            API->>DB: upsert users(wechat_openid)
+            API-->>FE: {token, user}
+            FE->>FE: Storage 写入 token/user
+        </div>
+      </div>
+
+      <div id="focus" class="card section">
+        <h2>专注计时（倒计时/正计时 + 严格/温和规则）</h2>
+        <p>
+          计时状态统一由 <code>timerStore</code> 管理。首页选择时长/事项/模式后启动计时并跳转到专注页；待办计时会启动正计时模式。
+        </p>
+        <h3>关键文件</h3>
+        <ul class="filelist">
+          <li><a href="../src/stores/timer.ts">src/stores/timer.ts</a></li>
+          <li><a href="../src/pages/home/index.vue">src/pages/home/index.vue</a></li>
+          <li><a href="../src/pages/timer/index.vue">src/pages/timer/index.vue</a></li>
+        </ul>
+        <div class="mermaid">
+          sequenceDiagram
+            participant Home as 首页
+            participant Store as timerStore
+            participant Timer as 专注页
+            participant API as /api/focus/end
+            Home->>Store: startFocus(duration, category, mode)
+            Home->>Timer: navigateTo /pages/timer
+            Timer->>Store: tick() 每秒
+            Timer->>Store: pause/resume/stop
+            Timer->>API: syncFocusEnd(duration_minutes, points, rank_after)
+        </div>
+        <div class="note">
+          <p>
+            严格/温和退出规则通过专注页的 onHide/onUnload/onBackPress 触发 <code>timerStore.registerQuit()</code> 实现，严格模式退出会清零积分并结束本次。
+          </p>
+        </div>
+      </div>
+
+      <div id="rank" class="card section">
+        <h2>职级与晋升（名称/阈值/头像）</h2>
+        <p>
+          职级配置统一在 <code>RANK_CONFIG</code>；晋升弹窗由专注页展示，展示旧职级→新职级的头像、名称、积分增量。
+        </p>
+        <h3>关键文件</h3>
+        <ul class="filelist">
+          <li><a href="../src/types/index.ts">src/types/index.ts</a></li>
+          <li><a href="../src/pages/timer/index.vue">src/pages/timer/index.vue</a></li>
+        </ul>
+        <p>
+          职级头像建议放到后端静态目录：<code>server/public/ranks/*.png</code>，通过
+          <code>https://tomatoclock.onrender.com/static/ranks/xxx.png</code> 访问，避免小程序包体积膨胀。
+        </p>
+      </div>
+
+      <div id="todo" class="card section">
+        <h2>待办清单 + 任务计时</h2>
+        <p>
+          待办数据在 <code>todoStore</code>（本地持久化），每个待办可直接进入专注页并开始正计时，结束后把本次耗时回写到待办中。
+        </p>
+        <h3>关键文件</h3>
+        <ul class="filelist">
+          <li><a href="../src/stores/todo.ts">src/stores/todo.ts</a></li>
+          <li><a href="../src/components/TodoChecklist.vue">src/components/TodoChecklist.vue</a></li>
+          <li><a href="../src/pages/home/index.vue">src/pages/home/index.vue</a></li>
+          <li><a href="../src/pages/timer/index.vue">src/pages/timer/index.vue</a></li>
+        </ul>
+        <div class="mermaid">
+          sequenceDiagram
+            participant UI as TodoChecklist
+            participant Todo as todoStore
+            participant Timer as timerStore
+            participant Page as 专注页
+            UI->>Todo: startTodoFocus(todoId)
+            UI->>Timer: startCountup(category, mode)
+            UI->>Page: navigateTo /pages/timer
+            Page->>Timer: tick()
+            Page->>Todo: finishActiveFocus(elapsedSeconds)
+        </div>
+      </div>
+
+      <div id="friends" class="card section">
+        <h2>好友系统 + 订阅消息通知</h2>
+        <p>
+          好友系统采用“邀请码→发起申请→对方同意→双方成为好友”。发送订阅消息由后端触发（需要用户在小程序端授权订阅）。
+        </p>
+        <h3>关键文件</h3>
+        <ul class="filelist">
+          <li><a href="../src/pages/friends/index.vue">src/pages/friends/index.vue</a></li>
+          <li><a href="../src/api/friends.ts">src/api/friends.ts</a></li>
+          <li><a href="../server/index.js">server/index.js</a></li>
+        </ul>
+        <div class="mermaid">
+          sequenceDiagram
+            participant A as 申请人
+            participant B as 被申请人
+            participant API as 后端
+            A->>API: POST /api/friends/invite {invite_code}
+            API-->>B: 订阅消息：好友申请
+            B->>API: POST /api/friends/invites/:id/accept
+            API-->>A: 订阅消息：申请通过
+        </div>
+        <p>
+          “提醒通知”开关通过前端控制是否触发 <code>requestSubscribeMessage</code>，实现用户可控的订阅授权行为。
+        </p>
+      </div>
+
+      <div id="studyroom" class="card section">
+        <h2>自习室（创建/加入/心跳/离开）</h2>
+        <p>
+          自习室为内存房间（Map）实现：join 创建/加入、ping 更新心跳并返回成员列表、leave 离开并在空房间时销毁。
+        </p>
+        <h3>关键文件</h3>
+        <ul class="filelist">
+          <li><a href="../src/pages/study-room/index.vue">src/pages/study-room/index.vue</a></li>
+          <li><a href="../server/index.js">server/index.js</a></li>
+        </ul>
+      </div>
+
+      <div id="audio" class="card section">
+        <h2>白噪音（静态托管 + 小程序播放）</h2>
+        <p>
+          音频资源建议放在后端静态目录：<code>server/public/audio/*.mp3</code>，通过
+          <code>/static/audio/*.mp3</code> 访问。小程序端播放采用 downloadFile → tempFilePath（更稳定）并带直连兜底。
+        </p>
+        <h3>关键文件</h3>
+        <ul class="filelist">
+          <li><a href="../server/index.js">server/index.js（静态托管 /static）</a></li>
+          <li><a href="../src/pages/timer/index.vue">src/pages/timer/index.vue（initAudio）</a></li>
+        </ul>
+        <div class="note">
+          <p>
+            如出现“下载失败”，通常需要在微信公众平台配置 <b>downloadFile 合法域名</b>（tomatoclock.onrender.com）。
+          </p>
+        </div>
+      </div>
+
+      <div id="request" class="card section">
+        <h2>网络请求封装（baseURL/重试/错误提示）</h2>
+        <p>
+          <code>request.ts</code> 统一注入 token、拼接 baseURL、处理 401 跳转登录、Render 冷启动超时重试、以及 DNS
+          解析失败提示跳转“开发配置页”。
+        </p>
+        <ul class="filelist">
+          <li><a href="../src/utils/request.ts">src/utils/request.ts</a></li>
+          <li><a href="../src/pages/dev-api/index.vue">src/pages/dev-api/index.vue</a></li>
+        </ul>
+      </div>
+
+      <div class="meta" style="margin-top: 18px">
+        提示：如果你希望把“页面截图”也塞进该 HTML，可以按以下方式：在微信开发者工具截图后放入
+        <code>docs/assets/</code>，然后在本文档中使用 <code>&lt;img src="assets/xxx.png"&gt;</code> 引用即可。
+      </div>
+    </div>
+  </body>
+</html>
+

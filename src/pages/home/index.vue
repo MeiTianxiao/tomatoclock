@@ -8,6 +8,7 @@
           <view v-else class="avatar-fallback">{{ user?.nickname?.slice(0, 1) || '你' }}</view>
         </view>
         <view class="greeting-texts">
+          <image class="greeting-rank-img" :src="blackCatUrl" mode="aspectFill" />
           <view class="greeting-title-row">
             <text class="greeting-title">{{ greeting }}，</text>
             <text v-if="hasRealNickname" class="greeting-title">{{ user?.nickname }}</text>
@@ -94,13 +95,13 @@
         </view>
         <view class="mode-item strict" :class="{ active: selectedMode === 'strict' }" @click="selectedMode = 'strict'">
           <text class="mode-title">严格模式</text>
-          <text class="mode-desc">退出则清零当日所有积分，积分×1.2倍</text>
+          <text class="mode-desc">退出则清零当日所有积分</text>
         </view>
       </view>
 
       <view class="action-grid">
         <button class="start-btn" @click="startFocus">开始工作</button>
-        <button class="study-room-btn" @click="goStudyRoom">双人自习室</button>
+        <button class="study-room-btn" @click="goStudyRoom">自习室</button>
       </view>
     </view>
 
@@ -177,6 +178,11 @@ const greeting = computed(() => {
   return '夜深了'
 })
 
+const blackCatUrl = computed(() => {
+  const fileName = encodeURIComponent('黑猫.jpg')
+  return `https://tomatoclock.onrender.com/static/ranks/${fileName}`
+})
+
 const currentDate = computed(() => {
   const now = new Date()
   const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
@@ -197,14 +203,30 @@ function getCategoryName(category: FocusCategory) {
 
 function startFocus() {
   todoStore.clearActiveFocus()
+  const settingsStr = uni.getStorageSync('app-settings')
+  const notificationsEnabled = (() => {
+    if (!settingsStr) return true
+    try {
+      const s = JSON.parse(settingsStr)
+      return s.notifications !== false
+    } catch {
+      return true
+    }
+  })()
+
   if (isWeixinMp) {
-    uni.requestSubscribeMessage({
-      tmplIds: ['Q_caCI_KtwEuo1xG8JgyUU4pkdVHsnN4JUsZFB52uTo'],
-      complete: () => {
-        timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value)
-        uni.navigateTo({ url: '/pages/timer/index' })
-      }
-    })
+    if (notificationsEnabled) {
+      uni.requestSubscribeMessage({
+        tmplIds: ['Q_caCI_KtwEuo1xG8JgyUU4pkdVHsnN4JUsZFB52uTo'],
+        complete: () => {
+          timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value)
+          uni.navigateTo({ url: '/pages/timer/index' })
+        }
+      })
+    } else {
+      timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value)
+      uni.navigateTo({ url: '/pages/timer/index' })
+    }
   } else {
     timerStore.startFocus(selectedDuration.value, selectedCategory.value, selectedMode.value)
     uni.navigateTo({ url: '/pages/timer/index' })
@@ -332,6 +354,15 @@ function checkDailyGoal() {
 
 .greeting-texts {
   flex: 1;
+}
+
+.greeting-rank-img {
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 42rpx;
+  display: block;
+  margin-bottom: 10rpx;
+  background: #eef2ff;
 }
 
 .greeting-title {
