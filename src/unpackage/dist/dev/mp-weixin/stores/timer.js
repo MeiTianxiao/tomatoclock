@@ -166,14 +166,13 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
     if (currentMode.value === "strict" && strictQuitTriggered.value) {
       return null;
     }
-    if (minutes < 5) {
+    if (minutes < 1) {
       return null;
     }
-    let multiplier = currentMode.value === "strict" ? 1.2 : 1;
+    let points = minutes;
     if (currentMode.value === "gentle" && gentlePenalty.value) {
-      multiplier *= 0.5;
+      points = Math.floor(points * 0.5);
     }
-    const points = Math.floor(minutes * multiplier);
     const oldRank = currentRank.value;
     dailyPoints.value += points;
     const newRank = calculateRank();
@@ -261,7 +260,7 @@ const useTimerStore = common_vendor.defineStore("timer", () => {
         }
       }
     } catch (e) {
-      common_vendor.index.__f__("error", "at stores/timer.ts:295", "Sync failed:", e);
+      common_vendor.index.__f__("error", "at stores/timer.ts:294", "Sync failed:", e);
     }
   }
   return {

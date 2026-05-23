@@ -26,12 +26,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  overflow: hidden;
 }
-.logo-icon.data-v-3f748249 {
-  color: #fff;
-  font-size: 72rpx;
-  font-weight: 700;
+.logo-img.data-v-3f748249 {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 80rpx;
+  display: block;
 }
 .title.data-v-3f748249 {
   display: block;

@@ -220,8 +220,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         E: common_vendor.o(($event) => selectedMode.value = "gentle", "75"),
         F: selectedMode.value === "strict" ? 1 : "",
         G: common_vendor.o(($event) => selectedMode.value = "strict", "de"),
-        H: common_vendor.o(startFocus, "71"),
-        I: common_vendor.o(goStudyRoom, "ad"),
+        H: common_vendor.o(startFocus, "44"),
+        I: common_vendor.o(goStudyRoom, "9f"),
         J: common_vendor.p({
           duration: selectedDuration.value,
           category: selectedCategory.value,

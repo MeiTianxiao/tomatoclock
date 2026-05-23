@@ -2,6 +2,7 @@
 const common_vendor = require("../../common/vendor.js");
 const stores_user = require("../../stores/user.js");
 const defaultAvatarUrl = "https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0";
+const blackCatUrl = "https://tomatoclock.onrender.com/static/ranks/logincat.jpg";
 const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "index",
   setup(__props) {
@@ -106,17 +107,18 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       return common_vendor.e({
         a: !needProfile.value
       }, !needProfile.value ? common_vendor.e({
-        b: common_vendor.unref(isWeixinMp)
+        b: blackCatUrl,
+        c: common_vendor.unref(isWeixinMp)
       }, common_vendor.unref(isWeixinMp) ? {
-        c: common_vendor.t(wechatLoading.value ? "微信登录中..." : "微信一键登录"),
-        d: wechatLoading.value,
-        e: common_vendor.o(handleWechatLogin, "05")
+        d: common_vendor.t(wechatLoading.value ? "微信登录中..." : "微信一键登录"),
+        e: wechatLoading.value,
+        f: common_vendor.o(handleWechatLogin, "9e")
       } : {}) : {
-        f: avatarUrl.value || defaultAvatarUrl,
-        g: common_vendor.o(onChooseAvatar, "1b"),
-        h: common_vendor.t(profileLoading.value ? "保存中..." : "完成登录"),
-        i: profileLoading.value,
-        j: common_vendor.o(onProfileSubmit, "25")
+        g: avatarUrl.value || defaultAvatarUrl,
+        h: common_vendor.o(onChooseAvatar, "11"),
+        i: common_vendor.t(profileLoading.value ? "保存中..." : "完成登录"),
+        j: profileLoading.value,
+        k: common_vendor.o(onProfileSubmit, "30")
       });
     };
   }

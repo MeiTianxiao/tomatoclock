@@ -8,7 +8,6 @@
           <view v-else class="avatar-fallback">{{ user?.nickname?.slice(0, 1) || '你' }}</view>
         </view>
         <view class="greeting-texts">
-          <image class="greeting-rank-img" :src="blackCatUrl" mode="aspectFill" />
           <view class="greeting-title-row">
             <text class="greeting-title">{{ greeting }}，</text>
             <text v-if="hasRealNickname" class="greeting-title">{{ user?.nickname }}</text>
@@ -176,11 +175,6 @@ const greeting = computed(() => {
   if (hour < 18) return '下午好'
   if (hour < 22) return '晚上好'
   return '夜深了'
-})
-
-const blackCatUrl = computed(() => {
-  const fileName = encodeURIComponent('黑猫.jpg')
-  return `https://tomatoclock.onrender.com/static/ranks/${fileName}`
 })
 
 const currentDate = computed(() => {
@@ -354,15 +348,6 @@ function checkDailyGoal() {
 
 .greeting-texts {
   flex: 1;
-}
-
-.greeting-rank-img {
-  width: 84rpx;
-  height: 84rpx;
-  border-radius: 42rpx;
-  display: block;
-  margin-bottom: 10rpx;
-  background: #eef2ff;
 }
 
 .greeting-title {

@@ -4,7 +4,7 @@
       <view v-if="!needProfile">
         <view class="header">
           <view class="logo">
-            <text class="logo-icon">✦</text>
+            <image class="logo-img" :src="blackCatUrl" mode="aspectFill"></image>
           </view>
           <text class="title">你好局长</text>
           <text class="subtitle">专注换晋升，开启您的职场之旅</text>
@@ -78,6 +78,7 @@ const needProfile = ref(false)
 const avatarUrl = ref('')
 const avatarBase64 = ref('')
 const defaultAvatarUrl = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
+const blackCatUrl = 'https://tomatoclock.onrender.com/static/ranks/logincat.jpg'
 
 const wxAny = (globalThis as any).wx
 const isWeixinMp = !!wxAny && typeof wxAny.login === 'function'
@@ -214,13 +215,14 @@ async function onProfileSubmit(e: any) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  overflow: hidden;
 }
 
-.logo-icon {
-  color: #fff;
-  font-size: 72rpx;
-  font-weight: 700;
+.logo-img {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 80rpx;
+  display: block;
 }
 
 .title {

@@ -185,7 +185,7 @@ export const useTimerStore = defineStore('timer', () => {
       return null
     }
     
-    if (minutes < 5) {
+    if (minutes < 1) {
       return null
     }
 

@@ -43,7 +43,7 @@
     </view>
 
     <view class="tips-section">
-      <text class="tips-title">💡 申论名句</text>
+      <text class="tips-title">💡 小贴士</text>
       <text class="tips-content">{{ currentTip }}</text>
     </view>
 
