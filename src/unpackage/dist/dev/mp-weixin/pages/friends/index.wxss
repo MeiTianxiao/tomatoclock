@@ -10,6 +10,25 @@
   justify-content: space-between;
   margin: 10rpx 0 26rpx;
 }
+.page-head-left.data-v-78842521 {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+.back-btn.data-v-78842521 {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -12rpx;
+}
+.back-icon.data-v-78842521 {
+  font-size: 52rpx;
+  line-height: 1;
+  color: #0f172a;
+  font-weight: 300;
+}
 .page-title.data-v-78842521 {
   display: block;
   font-size: 40rpx;

@@ -78,7 +78,7 @@ const needProfile = ref(false)
 const avatarUrl = ref('')
 const avatarBase64 = ref('')
 const defaultAvatarUrl = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
-const blackCatUrl = 'https://tomatoclock.onrender.com/static/ranks/logincat.jpg'
+const blackCatUrl = '/static/ranks/logincat.png'
 
 const wxAny = (globalThis as any).wx
 const isWeixinMp = !!wxAny && typeof wxAny.login === 'function'

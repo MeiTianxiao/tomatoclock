@@ -3,6 +3,7 @@ const common_vendor = require("../../common/vendor.js");
 const stores_user = require("../../stores/user.js");
 const stores_timer = require("../../stores/timer.js");
 const api_leaderboard = require("../../api/leaderboard.js");
+const api_friends = require("../../api/friends.js");
 const types_index = require("../../types/index.js");
 const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "index",
@@ -13,6 +14,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const loading = common_vendor.ref(false);
     const activeBoard = common_vendor.ref("all");
     const friendLeaderboard = common_vendor.ref([]);
+    const friendCount = common_vendor.ref(0);
     const friendLoading = common_vendor.ref(false);
     let refreshTimer = null;
     const wxAny = globalThis.wx;
@@ -64,8 +66,12 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     async function loadFriendBoard(silent = false) {
       friendLoading.value = true;
       try {
-        const data = await api_leaderboard.getFriendLeaderboard(50);
+        const [data, friendsList] = await Promise.all([
+          api_leaderboard.getFriendLeaderboard(50),
+          api_friends.getFriends().catch(() => [])
+        ]);
         friendLeaderboard.value = data;
+        friendCount.value = friendsList.length;
       } catch (error) {
         if (!silent)
           common_vendor.index.showToast({ title: "加载好友榜失败", icon: "none" });
@@ -172,8 +178,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         v: leaderboard.value.length === 0 && !loading.value
       }, leaderboard.value.length === 0 && !loading.value ? {} : {}) : common_vendor.e({
         w: friendLoading.value
-      }, friendLoading.value ? {} : friendLeaderboard.value.length <= 1 ? {
-        y: common_vendor.o(goFriends, "3d")
+      }, friendLoading.value ? {} : friendCount.value === 0 ? {
+        y: common_vendor.o(goFriends, "b6")
       } : {
         z: common_vendor.f(friendLeaderboard.value, (item, index, i0) => {
           return common_vendor.e({
@@ -194,7 +200,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           });
         })
       }, {
-        x: friendLeaderboard.value.length <= 1
+        x: friendCount.value === 0
       }), {
         A: (_m = common_vendor.unref(userStore).user) == null ? void 0 : _m.avatar_url
       }, ((_n = common_vendor.unref(userStore).user) == null ? void 0 : _n.avatar_url) ? {
@@ -215,7 +221,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         J: common_vendor.t(dailyPoints.value),
         K: common_vendor.t(totalMinutes.value),
         L: common_vendor.t(sessions.value.length),
-        M: common_vendor.o(goToFocus, "79")
+        M: common_vendor.o(goToFocus, "4f")
       });
     };
   }

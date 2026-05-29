@@ -68,19 +68,20 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             h: common_vendor.o(($event) => item.status === "active" ? startFocusForTodo(item.id) : null, item.id),
             i: item.status === "active"
           }, item.status === "active" ? {
-            j: disabledStart.value,
-            k: common_vendor.o(($event) => startFocusForTodo(item.id), item.id)
+            j: disabledStart.value ? 1 : "",
+            k: disabledStart.value,
+            l: common_vendor.o(($event) => startFocusForTodo(item.id), item.id)
           } : {}, {
-            l: item.id
+            m: item.id
           });
         }),
-        d: common_vendor.o(addTodo, "a5"),
+        d: common_vendor.o(addTodo, "a7"),
         e: newTitle.value,
-        f: common_vendor.o(($event) => newTitle.value = $event.detail.value, "9b"),
-        g: common_vendor.o(addTodo, "1c"),
+        f: common_vendor.o(($event) => newTitle.value = $event.detail.value, "cd"),
+        g: common_vendor.o(addTodo, "0b"),
         h: showCleared.value
       }, showCleared.value ? common_vendor.e({
-        i: common_vendor.o(closeCleared, "96"),
+        i: common_vendor.o(closeCleared, "7d"),
         j: clearedTodos.value.length === 0
       }, clearedTodos.value.length === 0 ? {} : {}, {
         k: common_vendor.f(clearedTodos.value, (c, k0, i0) => {
@@ -94,8 +95,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           });
         }),
         l: common_vendor.o(() => {
-        }, "37"),
-        m: common_vendor.o(closeCleared, "bc")
+        }, "15"),
+        m: common_vendor.o(closeCleared, "98")
       }) : {});
     };
   }

@@ -263,16 +263,16 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         c: common_vendor.s(progressStyle.value),
         d: common_vendor.t(formattedTime.value),
         e: common_vendor.t(statusText.value),
-        f: common_vendor.t(dailyPoints.value),
-        g: rankInfo.value.avatar,
-        h: common_vendor.t(rankInfo.value.name),
+        f: rankInfo.value.avatar,
+        g: common_vendor.t(rankInfo.value.name),
+        h: common_vendor.t(dailyPoints.value),
         i: isPaused.value
       }, isPaused.value ? {
-        j: common_vendor.o(resumeFocus, "f4")
+        j: common_vendor.o(resumeFocus, "f8")
       } : {
-        k: common_vendor.o(pauseFocus, "6c")
+        k: common_vendor.o(pauseFocus, "45")
       }, {
-        l: common_vendor.o(showStopConfirm, "25"),
+        l: common_vendor.o(showStopConfirm, "d4"),
         m: common_vendor.t(currentTip.value),
         n: showPromotion.value && promotionData.value
       }, showPromotion.value && promotionData.value ? common_vendor.e({
@@ -290,7 +290,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         x: common_vendor.t(todoFinish.value.title),
         y: common_vendor.t(formatSeconds(todoFinish.value.seconds))
       } : {}, {
-        z: common_vendor.o(closePromotion, "31")
+        z: common_vendor.o(closePromotion, "06")
       }) : {});
     };
   }

@@ -32,6 +32,7 @@
         <button
           v-if="item.status === 'active'"
           class="todo-start"
+          :class="{ disabled: disabledStart }"
           :disabled="disabledStart"
           @click.stop="startFocusForTodo(item.id)"
         >
@@ -269,7 +270,7 @@ function startFocusForTodo(id: string) {
   margin: 0;
 }
 
-.todo-start[disabled] {
+.todo-start.disabled {
   opacity: 0.4;
 }
 
