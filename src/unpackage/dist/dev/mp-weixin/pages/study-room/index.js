@@ -122,7 +122,25 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           return true;
         }
       } catch (e) {
-        common_vendor.index.showToast({ title: (e == null ? void 0 : e.message) || "加入失败", icon: "none" });
+        const msg = String((e == null ? void 0 : e.message) || "加入失败");
+        const isClosed = msg.includes("已关闭") || msg.includes("不存在");
+        if (isClosed && pendingAutoJoinCode.value === "" && code !== roomCode.value) {
+          common_vendor.index.showModal({
+            title: "自习室邀请",
+            content: `好友邀请你加入自习室 ${normalized}，但该自习室已结束。`,
+            showCancel: false,
+            confirmText: "知道了"
+          });
+        } else if (isClosed) {
+          common_vendor.index.showModal({
+            title: "自习室已关闭",
+            content: "该自习室已结束，无法加入。",
+            showCancel: false,
+            confirmText: "知道了"
+          });
+        } else {
+          common_vendor.index.showToast({ title: msg, icon: "none" });
+        }
       } finally {
         loading.value = false;
       }
@@ -260,28 +278,35 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }, !inRoom.value && pendingInvites.value.length ? {
         b: common_vendor.f(pendingInvites.value, (item, k0, i0) => {
           var _a;
-          return {
+          return common_vendor.e({
             a: common_vendor.t(((_a = item.inviter) == null ? void 0 : _a.nickname) || "好友"),
             b: common_vendor.t(item.room_code),
-            c: common_vendor.o(($event) => acceptInvite(item), item.id),
-            d: common_vendor.o(($event) => rejectInvite(item), item.id),
-            e: item.id
-          };
+            c: item.room_closed
+          }, item.room_closed ? {} : {}, {
+            d: item.room_closed
+          }, item.room_closed ? {} : {}, {
+            e: !item.room_closed
+          }, !item.room_closed ? {
+            f: common_vendor.o(($event) => acceptInvite(item), item.id)
+          } : {}, {
+            g: common_vendor.o(($event) => rejectInvite(item), item.id),
+            h: item.id
+          });
         })
       } : {}, {
         c: !inRoom.value
       }, !inRoom.value ? {
         d: roomCode.value,
-        e: common_vendor.o(($event) => roomCode.value = $event.detail.value, "59"),
+        e: common_vendor.o(($event) => roomCode.value = $event.detail.value, "32"),
         f: loading.value,
-        g: common_vendor.o(joinRoom, "ed"),
+        g: common_vendor.o(joinRoom, "4c"),
         h: loading.value,
-        i: common_vendor.o(createRoom, "5e")
+        i: common_vendor.o(createRoom, "9f")
       } : {
         j: common_vendor.t(currentRoom.value),
-        k: common_vendor.o(copyCode, "c9"),
+        k: common_vendor.o(copyCode, "ff"),
         l: common_vendor.t(members.value.length),
-        m: common_vendor.o(openFriendPicker, "2f"),
+        m: common_vendor.o(openFriendPicker, "ff"),
         n: common_vendor.f(members.value, (m, k0, i0) => {
           return {
             a: m.avatar_url || defaultAvatar,
@@ -289,11 +314,11 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             c: m.id
           };
         }),
-        o: common_vendor.o(leaveRoom, "cc")
+        o: common_vendor.o(leaveRoom, "5d")
       }, {
         p: showFriendPicker.value
       }, showFriendPicker.value ? common_vendor.e({
-        q: common_vendor.o(closeFriendPicker, "6e"),
+        q: common_vendor.o(closeFriendPicker, "9f"),
         r: friendsLoading.value
       }, friendsLoading.value ? {} : !availableFriends.value.length ? {} : {
         t: common_vendor.f(availableFriends.value, (friend, k0, i0) => {
@@ -308,8 +333,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }, {
         s: !availableFriends.value.length,
         v: common_vendor.o(() => {
-        }, "8d"),
-        w: common_vendor.o(closeFriendPicker, "fe")
+        }, "7d"),
+        w: common_vendor.o(closeFriendPicker, "5e")
       }) : {});
     };
   }

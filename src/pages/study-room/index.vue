@@ -8,9 +8,13 @@
     <view v-if="!inRoom && pendingInvites.length" class="card invite-inbox-card">
       <text class="label">收到的自习邀请</text>
       <view v-for="item in pendingInvites" :key="item.id" class="invite-inbox-item">
-        <text class="invite-inbox-text">{{ item.inviter?.nickname || '好友' }} 邀请你加入（{{ item.room_code }}）</text>
+        <view class="invite-inbox-text-row">
+          <text class="invite-inbox-text">{{ item.inviter?.nickname || '好友' }} 邀请你加入（{{ item.room_code }}）</text>
+          <text v-if="item.room_closed" class="invite-closed-badge">已关闭</text>
+        </view>
+        <text v-if="item.room_closed" class="invite-closed-tip">自习室已结束，无法加入</text>
         <view class="invite-inbox-actions">
-          <button class="mini-btn primary" @click="acceptInvite(item)">加入</button>
+          <button v-if="!item.room_closed" class="mini-btn primary" @click="acceptInvite(item)">加入</button>
           <button class="mini-btn" @click="rejectInvite(item)">忽略</button>
         </view>
       </view>
@@ -151,9 +155,20 @@ async function acceptInvite(item: StudyRoomInviteRecord) {
   try {
     const { room_code } = await acceptStudyRoomInvite(item.id)
     await loadPendingInvites()
-    await joinRoomByCode(room_code)
+    await joinRoomByCode(room_code, true)
   } catch (e: any) {
-    uni.showToast({ title: e?.message || '加入失败', icon: 'none' })
+    const msg = String(e?.message || '加入失败')
+    const isClosed = msg.includes('已关闭') || msg.includes('不存在')
+    if (isClosed) {
+      uni.showModal({
+        title: '自习室邀请',
+        content: `好友邀请你加入自习室，但该自习室已结束。`,
+        showCancel: false,
+        confirmText: '知道了'
+      })
+    } else {
+      uni.showToast({ title: msg, icon: 'none' })
+    }
     loadPendingInvites()
   }
 }
@@ -214,7 +229,7 @@ async function inviteFriend(friend: User) {
   }
 }
 
-async function joinRoomByCode(code: string) {
+async function joinRoomByCode(code: string, fromInvite = false) {
   const normalized = String(code || '').trim().toUpperCase()
   if (!normalized) return false
   loading.value = true
@@ -230,7 +245,25 @@ async function joinRoomByCode(code: string) {
       return true
     }
   } catch (e: any) {
-    uni.showToast({ title: e?.message || '加入失败', icon: 'none' })
+    const msg = String(e?.message || '加入失败')
+    const isClosed = msg.includes('已关闭') || msg.includes('不存在')
+    if (fromInvite && isClosed) {
+      uni.showModal({
+        title: '自习室邀请',
+        content: `好友邀请你加入自习室 ${normalized}，但该自习室已结束。`,
+        showCancel: false,
+        confirmText: '知道了'
+      })
+    } else if (isClosed) {
+      uni.showModal({
+        title: '自习室已关闭',
+        content: '该自习室已结束，无法加入。',
+        showCancel: false,
+        confirmText: '知道了'
+      })
+    } else {
+      uni.showToast({ title: msg, icon: 'none' })
+    }
   } finally {
     loading.value = false
   }
@@ -275,7 +308,7 @@ async function tryAutoJoin() {
   uni.removeStorageSync('pending-study-room-code')
   pendingAutoJoinCode.value = ''
   roomCode.value = String(code).toUpperCase()
-  await joinRoomByCode(roomCode.value)
+  await joinRoomByCode(roomCode.value, true)
 }
 
 async function fetchMembers() {
@@ -386,9 +419,36 @@ onUnmounted(() => {
   padding-top: 0;
 }
 
+.invite-inbox-text-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+}
+
 .invite-inbox-text {
   font-size: 26rpx;
   color: #334155;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.invite-inbox-text-row .invite-inbox-text {
+  margin-bottom: 0;
+}
+
+.invite-closed-badge {
+  font-size: 20rpx;
+  color: #fff;
+  background: #94a3b8;
+  border-radius: 8rpx;
+  padding: 2rpx 10rpx;
+  flex-shrink: 0;
+}
+
+.invite-closed-tip {
+  font-size: 22rpx;
+  color: #94a3b8;
   display: block;
   margin-bottom: 16rpx;
 }

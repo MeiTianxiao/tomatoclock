@@ -31,6 +31,29 @@
   display: block;
   margin-bottom: 16rpx;
 }
+.study-invite-text-row.data-v-4978fed5 {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+}
+.study-invite-text-row .study-invite-text.data-v-4978fed5 {
+  margin-bottom: 0;
+}
+.study-invite-closed-badge.data-v-4978fed5 {
+  font-size: 20rpx;
+  color: #fff;
+  background: #94a3b8;
+  border-radius: 8rpx;
+  padding: 2rpx 10rpx;
+  flex-shrink: 0;
+}
+.study-invite-closed-tip.data-v-4978fed5 {
+  font-size: 22rpx;
+  color: #94a3b8;
+  display: block;
+  margin-bottom: 16rpx;
+}
 .study-invite-actions.data-v-4978fed5 {
   display: flex;
   gap: 16rpx;

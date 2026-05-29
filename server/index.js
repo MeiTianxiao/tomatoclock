@@ -1708,47 +1708,41 @@ async function listPendingStudyRoomInvites(inviteeId) {
   }
 
   const valid = [];
-  const expiredIds = [];
+  const closedRoomInvites = [];
   for (const inv of invites) {
     if (studyRooms.has(inv.room_code)) {
       valid.push(inv);
     } else {
-      expiredIds.push(inv.id);
+      closedRoomInvites.push(inv);
     }
   }
 
-  if (expiredIds.length) {
-    const now = new Date().toISOString();
-    if (supabase) {
-      await supabase
-        .from('study_room_invites')
-        .update({ status: 'expired', responded_at: now })
-        .in('id', expiredIds);
-    } else {
-      studyRoomInvites = studyRoomInvites.map(inv =>
-        expiredIds.includes(inv.id) ? { ...inv, status: 'expired', responded_at: now } : inv
-      );
-    }
-  }
-
-  const inviterIds = Array.from(new Set(valid.map(i => i.inviter_id)));
+  const allInviterIds = Array.from(new Set([...valid, ...closedRoomInvites].map(i => i.inviter_id)));
   let inviterMap = new Map();
-  if (inviterIds.length) {
+  if (allInviterIds.length) {
     if (supabase) {
       const { data: inviters } = await supabase
         .from('users')
         .select('id,nickname,avatar_url')
-        .in('id', inviterIds);
+        .in('id', allInviterIds);
       inviterMap = new Map((inviters || []).map(u => [u.id, u]));
     } else {
-      inviterMap = new Map(users.filter(u => inviterIds.includes(u.id)).map(u => [u.id, u]));
+      inviterMap = new Map(users.filter(u => allInviterIds.includes(u.id)).map(u => [u.id, u]));
     }
   }
 
-  return valid.map(inv => ({
+  const validResult = valid.map(inv => ({
     ...inv,
+    room_closed: false,
     inviter: inviterMap.get(inv.inviter_id) || null
   }));
+  const closedResult = closedRoomInvites.map(inv => ({
+    ...inv,
+    room_closed: true,
+    inviter: inviterMap.get(inv.inviter_id) || null
+  }));
+
+  return [...validResult, ...closedResult];
 }
 
 async function updateStudyRoomInviteStatus(inviteId, inviteeId, status) {

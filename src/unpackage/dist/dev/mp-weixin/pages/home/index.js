@@ -190,12 +190,19 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }, pendingStudyInvites.value.length ? {
         b: common_vendor.f(pendingStudyInvites.value, (item, k0, i0) => {
           var _a2;
-          return {
+          return common_vendor.e({
             a: common_vendor.t(((_a2 = item.inviter) == null ? void 0 : _a2.nickname) || "好友"),
-            b: common_vendor.o(($event) => joinStudyInvite(item), item.id),
-            c: common_vendor.o(($event) => dismissStudyInvite(item), item.id),
-            d: item.id
-          };
+            b: item.room_closed
+          }, item.room_closed ? {} : {}, {
+            c: item.room_closed
+          }, item.room_closed ? {} : {}, {
+            d: !item.room_closed
+          }, !item.room_closed ? {
+            e: common_vendor.o(($event) => joinStudyInvite(item), item.id)
+          } : {}, {
+            f: common_vendor.o(($event) => dismissStudyInvite(item), item.id),
+            g: item.id
+          });
         })
       } : {}, {
         c: (_a = user.value) == null ? void 0 : _a.avatar_url
@@ -249,7 +256,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         A: common_vendor.t(isCustomDuration.value ? selectedDuration.value : "10-120"),
         B: isCustomDuration.value ? 1 : "",
         C: common_vendor.unref(customOptions),
-        D: common_vendor.o(onCustomDurationChange, "39"),
+        D: common_vendor.o(onCustomDurationChange, "0e"),
         E: common_vendor.f(common_vendor.unref(types_index.CATEGORY_CONFIG), (config, key, i0) => {
           return {
             a: common_vendor.t(config.icon),
@@ -261,11 +268,11 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           };
         }),
         F: selectedMode.value === "gentle" ? 1 : "",
-        G: common_vendor.o(($event) => selectedMode.value = "gentle", "35"),
+        G: common_vendor.o(($event) => selectedMode.value = "gentle", "43"),
         H: selectedMode.value === "strict" ? 1 : "",
-        I: common_vendor.o(($event) => selectedMode.value = "strict", "de"),
-        J: common_vendor.o(startFocus, "5d"),
-        K: common_vendor.o(goStudyRoom, "79"),
+        I: common_vendor.o(($event) => selectedMode.value = "strict", "61"),
+        J: common_vendor.o(startFocus, "a5"),
+        K: common_vendor.o(goStudyRoom, "ea"),
         L: common_vendor.p({
           duration: selectedDuration.value,
           category: selectedCategory.value,

@@ -12,6 +12,7 @@ export interface StudyRoomInviteRecord {
   created_at: string
   responded_at?: string | null
   inviter?: Pick<User, 'id' | 'nickname' | 'avatar_url'> | null
+  room_closed?: boolean
 }
 
 export interface StudyRoomInviteResult {
