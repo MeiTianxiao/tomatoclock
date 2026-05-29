@@ -4,13 +4,11 @@ const utils_request = require("../../utils/request.js");
 const stores_user = require("../../stores/user.js");
 const api_friends = require("../../api/friends.js");
 const api_studyRoom = require("../../api/study-room.js");
-const STUDY_ROOM_INVITE_TMPL_ID = "RTBtfzvBGRjq6g8cRCX6IsN_2spGTMwUMmtJFxsRbSc";
 const defaultAvatar = "https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0";
 const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "index",
   setup(__props) {
     const userStore = stores_user.useUserStore();
-    const isWeixinMp = !!globalThis.wx && typeof globalThis.wx.getAccountInfoSync === "function";
     const loading = common_vendor.ref(false);
     const roomCode = common_vendor.ref("");
     const currentRoom = common_vendor.ref("");
@@ -21,6 +19,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const friends = common_vendor.ref([]);
     const friendsLoading = common_vendor.ref(false);
     const invitingId = common_vendor.ref("");
+    const pendingInvites = common_vendor.ref([]);
     let pingTimer = null;
     let joinTime = 0;
     const availableFriends = common_vendor.computed(() => {
@@ -35,11 +34,31 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         common_vendor.index.setStorageSync("pending-study-room-code", pendingAutoJoinCode.value);
       }
     });
-    async function ensureStudyRoomNotifications() {
-      if (!isWeixinMp)
+    async function loadPendingInvites() {
+      if (!userStore.isLoggedIn || inRoom.value) {
+        pendingInvites.value = [];
         return;
+      }
       try {
-        await common_vendor.index.requestSubscribeMessage({ tmplIds: [STUDY_ROOM_INVITE_TMPL_ID] });
+        pendingInvites.value = await api_studyRoom.getPendingStudyRoomInvites();
+      } catch {
+        pendingInvites.value = [];
+      }
+    }
+    async function acceptInvite(item) {
+      try {
+        const { room_code } = await api_studyRoom.acceptStudyRoomInvite(item.id);
+        await loadPendingInvites();
+        await joinRoomByCode(room_code);
+      } catch (e) {
+        common_vendor.index.showToast({ title: (e == null ? void 0 : e.message) || "加入失败", icon: "none" });
+        loadPendingInvites();
+      }
+    }
+    async function rejectInvite(item) {
+      try {
+        await api_studyRoom.rejectStudyRoomInvite(item.id);
+        await loadPendingInvites();
       } catch {
       }
     }
@@ -54,7 +73,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }
     }
     async function openFriendPicker() {
-      await ensureStudyRoomNotifications();
+      await api_studyRoom.requestStudyRoomSubscribeMessage();
       showFriendPicker.value = true;
       await loadFriends();
     }
@@ -68,18 +87,20 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       invitingId.value = friend.id;
       try {
         const result = await api_studyRoom.inviteFriendToStudyRoom(currentRoom.value, friend.id);
-        if (result.notified) {
-          common_vendor.index.showToast({ title: `已通知 ${friend.nickname}`, icon: "success" });
-          closeFriendPicker();
-        } else {
+        const title = result.notified ? `已通知 ${friend.nickname}` : `已邀请 ${friend.nickname}（打开小程序可见）`;
+        common_vendor.index.showToast({ title, icon: "success" });
+        closeFriendPicker();
+      } catch (e) {
+        const msg = String((e == null ? void 0 : e.message) || "邀请失败");
+        if (msg.includes("接口不存在")) {
           common_vendor.index.showModal({
-            title: "邀请已记录",
-            content: result.notifyMessage || "对方可能未开启自习室通知。请让对方在小程序里授权订阅消息，或复制验证码手动发送。",
+            title: "后端未更新",
+            content: "邀请接口尚未部署到线上服务器。请重新部署 Render 后端，或在开发配置里改用本地接口地址。",
             showCancel: false
           });
+          return;
         }
-      } catch (e) {
-        common_vendor.index.showToast({ title: (e == null ? void 0 : e.message) || "邀请失败", icon: "none" });
+        common_vendor.index.showToast({ title: msg, icon: "none" });
       } finally {
         invitingId.value = "";
       }
@@ -218,10 +239,13 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     common_vendor.onMounted(() => {
       userStore.loadUser();
       tryAutoJoin();
+      loadPendingInvites();
     });
     common_vendor.onShow(() => {
       userStore.loadUser();
       tryAutoJoin();
+      loadPendingInvites();
+      api_studyRoom.requestStudyRoomSubscribeMessage();
     });
     common_vendor.onUnmounted(() => {
       stopPing();
@@ -232,34 +256,47 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: !inRoom.value
+        a: !inRoom.value && pendingInvites.value.length
+      }, !inRoom.value && pendingInvites.value.length ? {
+        b: common_vendor.f(pendingInvites.value, (item, k0, i0) => {
+          var _a;
+          return {
+            a: common_vendor.t(((_a = item.inviter) == null ? void 0 : _a.nickname) || "好友"),
+            b: common_vendor.t(item.room_code),
+            c: common_vendor.o(($event) => acceptInvite(item), item.id),
+            d: common_vendor.o(($event) => rejectInvite(item), item.id),
+            e: item.id
+          };
+        })
+      } : {}, {
+        c: !inRoom.value
       }, !inRoom.value ? {
-        b: roomCode.value,
-        c: common_vendor.o(($event) => roomCode.value = $event.detail.value, "42"),
-        d: loading.value,
-        e: common_vendor.o(joinRoom, "3c"),
+        d: roomCode.value,
+        e: common_vendor.o(($event) => roomCode.value = $event.detail.value, "59"),
         f: loading.value,
-        g: common_vendor.o(createRoom, "77")
+        g: common_vendor.o(joinRoom, "ed"),
+        h: loading.value,
+        i: common_vendor.o(createRoom, "5e")
       } : {
-        h: common_vendor.t(currentRoom.value),
-        i: common_vendor.o(copyCode, "72"),
-        j: common_vendor.t(members.value.length),
-        k: common_vendor.o(openFriendPicker, "9f"),
-        l: common_vendor.f(members.value, (m, k0, i0) => {
+        j: common_vendor.t(currentRoom.value),
+        k: common_vendor.o(copyCode, "c9"),
+        l: common_vendor.t(members.value.length),
+        m: common_vendor.o(openFriendPicker, "2f"),
+        n: common_vendor.f(members.value, (m, k0, i0) => {
           return {
             a: m.avatar_url || defaultAvatar,
             b: common_vendor.t(m.nickname),
             c: m.id
           };
         }),
-        m: common_vendor.o(leaveRoom, "87")
+        o: common_vendor.o(leaveRoom, "cc")
       }, {
-        n: showFriendPicker.value
+        p: showFriendPicker.value
       }, showFriendPicker.value ? common_vendor.e({
-        o: common_vendor.o(closeFriendPicker, "94"),
-        p: friendsLoading.value
+        q: common_vendor.o(closeFriendPicker, "6e"),
+        r: friendsLoading.value
       }, friendsLoading.value ? {} : !availableFriends.value.length ? {} : {
-        r: common_vendor.f(availableFriends.value, (friend, k0, i0) => {
+        t: common_vendor.f(availableFriends.value, (friend, k0, i0) => {
           return {
             a: friend.avatar_url || defaultAvatar,
             b: common_vendor.t(friend.nickname),
@@ -269,10 +306,10 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           };
         })
       }, {
-        q: !availableFriends.value.length,
-        s: common_vendor.o(() => {
-        }, "d4"),
-        t: common_vendor.o(closeFriendPicker, "c5")
+        s: !availableFriends.value.length,
+        v: common_vendor.o(() => {
+        }, "8d"),
+        w: common_vendor.o(closeFriendPicker, "fe")
       }) : {});
     };
   }

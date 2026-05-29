@@ -4,6 +4,54 @@
   box-sizing: border-box;
   background: #f2f5ff;
 }
+.study-invite-card.data-v-4978fed5 {
+  margin-bottom: 24rpx;
+  padding: 28rpx;
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+  border: 2rpx solid #bfdbfe;
+}
+.study-invite-title.data-v-4978fed5 {
+  font-size: 28rpx;
+  font-weight: 900;
+  color: #1d4ed8;
+  display: block;
+  margin-bottom: 16rpx;
+}
+.study-invite-item.data-v-4978fed5 {
+  padding: 16rpx 0;
+  border-top: 1rpx solid rgba(59, 130, 246, 0.15);
+}
+.study-invite-item.data-v-4978fed5:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.study-invite-text.data-v-4978fed5 {
+  font-size: 26rpx;
+  color: #334155;
+  display: block;
+  margin-bottom: 16rpx;
+}
+.study-invite-actions.data-v-4978fed5 {
+  display: flex;
+  gap: 16rpx;
+}
+.study-invite-btn.data-v-4978fed5 {
+  flex: 1;
+  height: 72rpx;
+  line-height: 72rpx;
+  font-size: 26rpx;
+  border-radius: 16rpx;
+  margin: 0;
+  background: #e2e8f0;
+  color: #475569;
+}
+.study-invite-btn.data-v-4978fed5::after {
+  display: none;
+}
+.study-invite-btn.primary.data-v-4978fed5 {
+  background: #3b82f6;
+  color: #fff;
+}
 .card.data-v-4978fed5 {
   background: #fff;
   border-radius: 28rpx;

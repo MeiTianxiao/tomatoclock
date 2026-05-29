@@ -5,6 +5,17 @@
       <text class="subtitle">与好友一起专注，共同进步</text>
     </view>
 
+    <view v-if="!inRoom && pendingInvites.length" class="card invite-inbox-card">
+      <text class="label">收到的自习邀请</text>
+      <view v-for="item in pendingInvites" :key="item.id" class="invite-inbox-item">
+        <text class="invite-inbox-text">{{ item.inviter?.nickname || '好友' }} 邀请你加入（{{ item.room_code }}）</text>
+        <view class="invite-inbox-actions">
+          <button class="mini-btn primary" @click="acceptInvite(item)">加入</button>
+          <button class="mini-btn" @click="rejectInvite(item)">忽略</button>
+        </view>
+      </view>
+    </view>
+
     <view class="card" v-if="!inRoom">
       <view class="input-group">
         <text class="label">加入自习室</text>
@@ -44,7 +55,7 @@
             <text class="status">专注中...</text>
           </view>
         </view>
-        <text class="invite-tip">点 + 邀请好友，对方点微信通知即可直接进入本自习室</text>
+        <text class="invite-tip">点 + 邀请好友。对方打开小程序首页或本页即可看到邀请；若已授权订阅，还会收到微信通知。</text>
       </view>
 
       <view class="action-section">
@@ -83,12 +94,17 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { post, get } from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 import { getFriends } from '@/api/friends'
-import { inviteFriendToStudyRoom } from '@/api/study-room'
+import {
+  inviteFriendToStudyRoom,
+  getPendingStudyRoomInvites,
+  acceptStudyRoomInvite,
+  rejectStudyRoomInvite,
+  requestStudyRoomSubscribeMessage,
+  type StudyRoomInviteRecord
+} from '@/api/study-room'
 import type { User } from '@/types'
 
 const userStore = useUserStore()
-const isWeixinMp = !!(globalThis as any).wx && typeof (globalThis as any).wx.getAccountInfoSync === 'function'
-const STUDY_ROOM_INVITE_TMPL_ID = 'RTBtfzvBGRjq6g8cRCX6IsN_2spGTMwUMmtJFxsRbSc'
 
 const loading = ref(false)
 const roomCode = ref('')
@@ -101,6 +117,7 @@ const showFriendPicker = ref(false)
 const friends = ref<User[]>([])
 const friendsLoading = ref(false)
 const invitingId = ref('')
+const pendingInvites = ref<StudyRoomInviteRecord[]>([])
 let pingTimer: any = null
 let joinTime: number = 0
 
@@ -118,10 +135,33 @@ onLoad((options: any) => {
   }
 })
 
-async function ensureStudyRoomNotifications() {
-  if (!isWeixinMp) return
+async function loadPendingInvites() {
+  if (!userStore.isLoggedIn || inRoom.value) {
+    pendingInvites.value = []
+    return
+  }
   try {
-    await uni.requestSubscribeMessage({ tmplIds: [STUDY_ROOM_INVITE_TMPL_ID] })
+    pendingInvites.value = await getPendingStudyRoomInvites()
+  } catch {
+    pendingInvites.value = []
+  }
+}
+
+async function acceptInvite(item: StudyRoomInviteRecord) {
+  try {
+    const { room_code } = await acceptStudyRoomInvite(item.id)
+    await loadPendingInvites()
+    await joinRoomByCode(room_code)
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '加入失败', icon: 'none' })
+    loadPendingInvites()
+  }
+}
+
+async function rejectInvite(item: StudyRoomInviteRecord) {
+  try {
+    await rejectStudyRoomInvite(item.id)
+    await loadPendingInvites()
   } catch {
   }
 }
@@ -138,7 +178,7 @@ async function loadFriends() {
 }
 
 async function openFriendPicker() {
-  await ensureStudyRoomNotifications()
+  await requestStudyRoomSubscribeMessage()
   showFriendPicker.value = true
   await loadFriends()
 }
@@ -153,20 +193,22 @@ async function inviteFriend(friend: User) {
   invitingId.value = friend.id
   try {
     const result = await inviteFriendToStudyRoom(currentRoom.value, friend.id)
-    if (result.notified) {
-      uni.showToast({ title: `已通知 ${friend.nickname}`, icon: 'success' })
-      closeFriendPicker()
-    } else {
+    const title = result.notified
+      ? `已通知 ${friend.nickname}`
+      : `已邀请 ${friend.nickname}（打开小程序可见）`
+    uni.showToast({ title, icon: 'success' })
+    closeFriendPicker()
+  } catch (e: any) {
+    const msg = String(e?.message || '邀请失败')
+    if (msg.includes('接口不存在')) {
       uni.showModal({
-        title: '邀请已记录',
-        content:
-          result.notifyMessage ||
-          '对方可能未开启自习室通知。请让对方在小程序里授权订阅消息，或复制验证码手动发送。',
+        title: '后端未更新',
+        content: '邀请接口尚未部署到线上服务器。请重新部署 Render 后端，或在开发配置里改用本地接口地址。',
         showCancel: false
       })
+      return
     }
-  } catch (e: any) {
-    uni.showToast({ title: e?.message || '邀请失败', icon: 'none' })
+    uni.showToast({ title: msg, icon: 'none' })
   } finally {
     invitingId.value = ''
   }
@@ -311,11 +353,14 @@ async function leaveRoom() {
 onMounted(() => {
   userStore.loadUser()
   tryAutoJoin()
+  loadPendingInvites()
 })
 
 onShow(() => {
   userStore.loadUser()
   tryAutoJoin()
+  loadPendingInvites()
+  requestStudyRoomSubscribeMessage()
 })
 
 onUnmounted(() => {
@@ -327,6 +372,37 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
+.invite-inbox-card {
+  margin-bottom: 24rpx;
+}
+
+.invite-inbox-item {
+  padding: 20rpx 0;
+  border-top: 1rpx solid #e2e8f0;
+}
+
+.invite-inbox-item:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.invite-inbox-text {
+  font-size: 26rpx;
+  color: #334155;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.invite-inbox-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.mini-btn.primary {
+  background: #3b82f6;
+  color: #fff;
+}
+
 .page {
   min-height: 100vh;
   background: #f8fafc;

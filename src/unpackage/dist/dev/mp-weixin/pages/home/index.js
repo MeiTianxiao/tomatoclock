@@ -4,6 +4,7 @@ const stores_user = require("../../stores/user.js");
 const stores_timer = require("../../stores/timer.js");
 const stores_todo = require("../../stores/todo.js");
 const types_index = require("../../types/index.js");
+const api_studyRoom = require("../../api/study-room.js");
 if (!Math) {
   TodoChecklist();
 }
@@ -16,6 +17,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const todoStore = stores_todo.useTodoStore();
     const isWeixinMp = !!globalThis.wx && typeof globalThis.wx.getAccountInfoSync === "function";
     const showFireworks = common_vendor.ref(false);
+    const pendingStudyInvites = common_vendor.ref([]);
     const selectedDuration = common_vendor.ref(25);
     const selectedMode = common_vendor.ref("strict");
     const selectedCategory = common_vendor.ref("study");
@@ -106,6 +108,34 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     function goStudyRoom() {
       common_vendor.index.navigateTo({ url: "/pages/study-room/index" });
     }
+    async function loadStudyInvites() {
+      if (!userStore.isLoggedIn) {
+        pendingStudyInvites.value = [];
+        return;
+      }
+      try {
+        pendingStudyInvites.value = await api_studyRoom.getPendingStudyRoomInvites();
+      } catch {
+        pendingStudyInvites.value = [];
+      }
+    }
+    async function joinStudyInvite(item) {
+      try {
+        const { room_code } = await api_studyRoom.acceptStudyRoomInvite(item.id);
+        await loadStudyInvites();
+        common_vendor.index.navigateTo({ url: `/pages/study-room/index?code=${room_code}` });
+      } catch (e) {
+        common_vendor.index.showToast({ title: (e == null ? void 0 : e.message) || "加入失败", icon: "none" });
+        loadStudyInvites();
+      }
+    }
+    async function dismissStudyInvite(item) {
+      try {
+        await api_studyRoom.rejectStudyRoomInvite(item.id);
+        await loadStudyInvites();
+      } catch {
+      }
+    }
     const customValues = Array.from({ length: 12 }, (_, i) => (i + 1) * 10);
     const customOptions = customValues.map((v) => `${v} 分钟`);
     function onCustomDurationChange(e) {
@@ -127,6 +157,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     common_vendor.onShow(() => {
       if (userStore.isLoggedIn) {
         timerStore.syncWithServer();
+        loadStudyInvites();
+        api_studyRoom.requestStudyRoomSubscribeMessage();
       }
       checkDailyGoal();
     });
@@ -154,43 +186,55 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     return (_ctx, _cache) => {
       var _a, _b, _c, _d, _e, _f, _g, _h, _i;
       return common_vendor.e({
-        a: (_a = user.value) == null ? void 0 : _a.avatar_url
+        a: pendingStudyInvites.value.length
+      }, pendingStudyInvites.value.length ? {
+        b: common_vendor.f(pendingStudyInvites.value, (item, k0, i0) => {
+          var _a2;
+          return {
+            a: common_vendor.t(((_a2 = item.inviter) == null ? void 0 : _a2.nickname) || "好友"),
+            b: common_vendor.o(($event) => joinStudyInvite(item), item.id),
+            c: common_vendor.o(($event) => dismissStudyInvite(item), item.id),
+            d: item.id
+          };
+        })
+      } : {}, {
+        c: (_a = user.value) == null ? void 0 : _a.avatar_url
       }, ((_b = user.value) == null ? void 0 : _b.avatar_url) ? {
-        b: user.value.avatar_url
+        d: user.value.avatar_url
       } : common_vendor.unref(isWeixinMp) ? {} : {
-        d: common_vendor.t(((_d = (_c = user.value) == null ? void 0 : _c.nickname) == null ? void 0 : _d.slice(0, 1)) || "你")
+        f: common_vendor.t(((_d = (_c = user.value) == null ? void 0 : _c.nickname) == null ? void 0 : _d.slice(0, 1)) || "你")
       }, {
-        c: common_vendor.unref(isWeixinMp),
-        e: common_vendor.t(greeting.value),
-        f: hasRealNickname.value
+        e: common_vendor.unref(isWeixinMp),
+        g: common_vendor.t(greeting.value),
+        h: hasRealNickname.value
       }, hasRealNickname.value ? {
-        g: common_vendor.t((_e = user.value) == null ? void 0 : _e.nickname)
+        i: common_vendor.t((_e = user.value) == null ? void 0 : _e.nickname)
       } : common_vendor.unref(isWeixinMp) ? {} : {}, {
-        h: common_vendor.unref(isWeixinMp),
-        i: common_vendor.t((totalMinutes.value / 60).toFixed(1)),
-        j: common_vendor.t(pointsToNextRank.value),
-        k: showFireworks.value
+        j: common_vendor.unref(isWeixinMp),
+        k: common_vendor.t((totalMinutes.value / 60).toFixed(1)),
+        l: common_vendor.t(pointsToNextRank.value),
+        m: showFireworks.value
       }, showFireworks.value ? {
-        l: common_vendor.f(5, (i, k0, i0) => {
+        n: common_vendor.f(5, (i, k0, i0) => {
           return {
             a: i
           };
         })
       } : {}, {
-        m: (_f = user.value) == null ? void 0 : _f.avatar_url
+        o: (_f = user.value) == null ? void 0 : _f.avatar_url
       }, ((_g = user.value) == null ? void 0 : _g.avatar_url) ? {
-        n: user.value.avatar_url
+        p: user.value.avatar_url
       } : common_vendor.unref(isWeixinMp) ? {} : {
-        p: common_vendor.t(((_i = (_h = user.value) == null ? void 0 : _h.nickname) == null ? void 0 : _i.slice(0, 1)) || "你")
+        r: common_vendor.t(((_i = (_h = user.value) == null ? void 0 : _h.nickname) == null ? void 0 : _i.slice(0, 1)) || "你")
       }, {
-        o: common_vendor.unref(isWeixinMp),
-        q: common_vendor.t(rankInfo.value.name),
-        r: rankInfo.value.color,
-        s: common_vendor.t(dailyPoints.value),
-        t: common_vendor.t(pointsToNextRank.value),
-        v: progressToNextRank.value + "%",
-        w: rankInfo.value.color,
-        x: common_vendor.f(durationOptions, (duration, k0, i0) => {
+        q: common_vendor.unref(isWeixinMp),
+        s: common_vendor.t(rankInfo.value.name),
+        t: rankInfo.value.color,
+        v: common_vendor.t(dailyPoints.value),
+        w: common_vendor.t(pointsToNextRank.value),
+        x: progressToNextRank.value + "%",
+        y: rankInfo.value.color,
+        z: common_vendor.f(durationOptions, (duration, k0, i0) => {
           return {
             a: common_vendor.t(duration.value),
             b: common_vendor.t(duration.desc),
@@ -202,11 +246,11 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             }, duration.value)
           };
         }),
-        y: common_vendor.t(isCustomDuration.value ? selectedDuration.value : "10-120"),
-        z: isCustomDuration.value ? 1 : "",
-        A: common_vendor.unref(customOptions),
-        B: common_vendor.o(onCustomDurationChange, "ca"),
-        C: common_vendor.f(common_vendor.unref(types_index.CATEGORY_CONFIG), (config, key, i0) => {
+        A: common_vendor.t(isCustomDuration.value ? selectedDuration.value : "10-120"),
+        B: isCustomDuration.value ? 1 : "",
+        C: common_vendor.unref(customOptions),
+        D: common_vendor.o(onCustomDurationChange, "39"),
+        E: common_vendor.f(common_vendor.unref(types_index.CATEGORY_CONFIG), (config, key, i0) => {
           return {
             a: common_vendor.t(config.icon),
             b: config.color,
@@ -216,13 +260,13 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             f: common_vendor.o(($event) => selectedCategory.value = key, key)
           };
         }),
-        D: selectedMode.value === "gentle" ? 1 : "",
-        E: common_vendor.o(($event) => selectedMode.value = "gentle", "75"),
-        F: selectedMode.value === "strict" ? 1 : "",
-        G: common_vendor.o(($event) => selectedMode.value = "strict", "de"),
-        H: common_vendor.o(startFocus, "44"),
-        I: common_vendor.o(goStudyRoom, "9f"),
-        J: common_vendor.p({
+        F: selectedMode.value === "gentle" ? 1 : "",
+        G: common_vendor.o(($event) => selectedMode.value = "gentle", "35"),
+        H: selectedMode.value === "strict" ? 1 : "",
+        I: common_vendor.o(($event) => selectedMode.value = "strict", "de"),
+        J: common_vendor.o(startFocus, "5d"),
+        K: common_vendor.o(goStudyRoom, "79"),
+        L: common_vendor.p({
           duration: selectedDuration.value,
           category: selectedCategory.value,
           mode: selectedMode.value

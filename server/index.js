@@ -89,6 +89,7 @@ let sessions = [];
 let weeklyStats = [];
 let friendInvites = [];
 let friends = [];
+let studyRoomInvites = [];
 
 let wechatAccessToken = { token: '', expiresAt: 0 };
 
@@ -141,7 +142,7 @@ async function sendWechatSubscribeMessage(openid, template_id, page, data) {
       return { ok: true };
     } else {
       console.error('发送微信订阅消息失败:', json);
-      return { ok: false, message: json.errmsg, data: json };
+      return { ok: false, message: formatSubscribeNotifyError(json.errmsg, json.errcode), data: json };
     }
   } catch (e) {
     console.error('发送微信订阅消息异常:', e);
@@ -154,6 +155,20 @@ function formatShanghaiTime(date = new Date()) {
 }
 
 const STUDY_ROOM_INVITE_TMPL_ID = 'RTBtfzvBGRjq6g8cRCX6IsN_2spGTMwUMmtJFxsRbSc';
+
+function formatSubscribeNotifyError(message, errcode) {
+  const msg = String(message || '');
+  if (errcode === 43101 || /refuse to accept/i.test(msg)) {
+    return '对方尚未授权「自习室邀请」通知。请让对方打开小程序，进入「设置→好友管理」，点击「开启通知」并允许订阅。你也可以复制验证码发给对方。';
+  }
+  if (errcode === 47003 || /template/i.test(msg)) {
+    return '订阅消息模板字段不匹配，请联系开发者检查微信后台模板配置。';
+  }
+  if (errcode === 40037 || /invalid template id/i.test(msg)) {
+    return '订阅消息模板未生效，请确认微信后台已添加该模板。';
+  }
+  return msg || '通知发送失败，请复制验证码手动邀请好友。';
+}
 
 async function areFriends(userId, friendId) {
   if (!userId || !friendId || userId === friendId) return false;
@@ -1634,6 +1649,182 @@ app.get('/api/leaderboard', async (req, res) => {
 // 自习室 API (Study Room)
 // =====================================
 
+async function createStudyRoomInviteRecord(inviterId, inviteeId, roomCode) {
+  const now = new Date().toISOString();
+  if (supabase) {
+    await supabase
+      .from('study_room_invites')
+      .update({ status: 'expired', responded_at: now })
+      .eq('inviter_id', inviterId)
+      .eq('invitee_id', inviteeId)
+      .eq('room_code', roomCode)
+      .eq('status', 'pending');
+
+    const { data, error } = await supabase
+      .from('study_room_invites')
+      .insert({
+        inviter_id: inviterId,
+        invitee_id: inviteeId,
+        room_code: roomCode,
+        status: 'pending'
+      })
+      .select('*')
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  studyRoomInvites = studyRoomInvites.map(inv =>
+    inv.inviter_id === inviterId && inv.invitee_id === inviteeId && inv.room_code === roomCode && inv.status === 'pending'
+      ? { ...inv, status: 'expired', responded_at: now }
+      : inv
+  );
+  const created = {
+    id: uuidv4(),
+    inviter_id: inviterId,
+    invitee_id: inviteeId,
+    room_code: roomCode,
+    status: 'pending',
+    created_at: now,
+    responded_at: null
+  };
+  studyRoomInvites.push(created);
+  return created;
+}
+
+async function listPendingStudyRoomInvites(inviteeId) {
+  let invites = [];
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('study_room_invites')
+      .select('*')
+      .eq('invitee_id', inviteeId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    invites = data || [];
+  } else {
+    invites = studyRoomInvites.filter(i => i.invitee_id === inviteeId && i.status === 'pending');
+  }
+
+  const valid = [];
+  const expiredIds = [];
+  for (const inv of invites) {
+    if (studyRooms.has(inv.room_code)) {
+      valid.push(inv);
+    } else {
+      expiredIds.push(inv.id);
+    }
+  }
+
+  if (expiredIds.length) {
+    const now = new Date().toISOString();
+    if (supabase) {
+      await supabase
+        .from('study_room_invites')
+        .update({ status: 'expired', responded_at: now })
+        .in('id', expiredIds);
+    } else {
+      studyRoomInvites = studyRoomInvites.map(inv =>
+        expiredIds.includes(inv.id) ? { ...inv, status: 'expired', responded_at: now } : inv
+      );
+    }
+  }
+
+  const inviterIds = Array.from(new Set(valid.map(i => i.inviter_id)));
+  let inviterMap = new Map();
+  if (inviterIds.length) {
+    if (supabase) {
+      const { data: inviters } = await supabase
+        .from('users')
+        .select('id,nickname,avatar_url')
+        .in('id', inviterIds);
+      inviterMap = new Map((inviters || []).map(u => [u.id, u]));
+    } else {
+      inviterMap = new Map(users.filter(u => inviterIds.includes(u.id)).map(u => [u.id, u]));
+    }
+  }
+
+  return valid.map(inv => ({
+    ...inv,
+    inviter: inviterMap.get(inv.inviter_id) || null
+  }));
+}
+
+async function updateStudyRoomInviteStatus(inviteId, inviteeId, status) {
+  const now = new Date().toISOString();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('study_room_invites')
+      .update({ status, responded_at: now })
+      .eq('id', inviteId)
+      .eq('invitee_id', inviteeId)
+      .eq('status', 'pending')
+      .select('*')
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  const idx = studyRoomInvites.findIndex(
+    i => i.id === inviteId && i.invitee_id === inviteeId && i.status === 'pending'
+  );
+  if (idx < 0) return null;
+  studyRoomInvites[idx] = { ...studyRoomInvites[idx], status, responded_at: now };
+  return studyRoomInvites[idx];
+}
+
+app.get('/api/study-room/invites', async (req, res) => {
+  const token = getToken(req);
+  if (!token) return res.status(401).json({ code: 401, message: '未登录' });
+
+  try {
+    const invites = await listPendingStudyRoomInvites(token);
+    return res.json({ code: 200, message: 'success', data: invites });
+  } catch (e) {
+    return res.status(500).json({ code: 500, message: e?.message || '服务异常' });
+  }
+});
+
+app.post('/api/study-room/invites/:id/accept', async (req, res) => {
+  const token = getToken(req);
+  const { id } = req.params;
+  if (!token) return res.status(401).json({ code: 401, message: '未登录' });
+
+  try {
+    const updated = await updateStudyRoomInviteStatus(id, token, 'accepted');
+    if (!updated) {
+      return res.status(404).json({ code: 404, message: '邀请不存在或已处理' });
+    }
+    if (!studyRooms.has(updated.room_code)) {
+      return res.status(404).json({ code: 404, message: '自习室已关闭' });
+    }
+    return res.json({
+      code: 200,
+      message: 'success',
+      data: { room_code: updated.room_code }
+    });
+  } catch (e) {
+    return res.status(500).json({ code: 500, message: e?.message || '服务异常' });
+  }
+});
+
+app.post('/api/study-room/invites/:id/reject', async (req, res) => {
+  const token = getToken(req);
+  const { id } = req.params;
+  if (!token) return res.status(401).json({ code: 401, message: '未登录' });
+
+  try {
+    const updated = await updateStudyRoomInviteStatus(id, token, 'rejected');
+    if (!updated) {
+      return res.status(404).json({ code: 404, message: '邀请不存在或已处理' });
+    }
+    return res.json({ code: 200, message: 'success', data: { ok: true } });
+  } catch (e) {
+    return res.status(500).json({ code: 500, message: e?.message || '服务异常' });
+  }
+});
+
 app.post('/api/study-room/invite', async (req, res) => {
   const token = getToken(req);
   if (!token) return res.status(401).json({ code: 401, message: '未登录' });
@@ -1680,8 +1871,10 @@ app.post('/api/study-room/invite', async (req, res) => {
       return res.status(404).json({ code: 404, message: '好友不存在' });
     }
 
+    await createStudyRoomInviteRecord(token, friendId, roomCode);
+
     let notified = false;
-    let notifyMessage = '好友未绑定微信，无法推送通知';
+    let notifyMessage = '已写入小程序内邀请，对方打开应用即可看到';
     if (invitee.wechat_openid && inviter) {
       const page = `pages/study-room/index?code=${encodeURIComponent(roomCode)}`;
       const sendResult = await sendWechatSubscribeMessage(invitee.wechat_openid, STUDY_ROOM_INVITE_TMPL_ID, page, {
@@ -1690,13 +1883,18 @@ app.post('/api/study-room/invite', async (req, res) => {
         time3: { value: formatShanghaiTime() }
       });
       notified = sendResult.ok;
-      notifyMessage = sendResult.ok ? '' : sendResult.message || '通知发送失败';
+      if (!sendResult.ok) {
+        notifyMessage = `${formatSubscribeNotifyError(sendResult.message, sendResult.data?.errcode)}（对方仍可在小程序首页看到邀请）`;
+      } else {
+        notifyMessage = '';
+      }
     }
 
     return res.json({
       code: 200,
       message: 'success',
       data: {
+        inApp: true,
         notified,
         notifyMessage,
         invitee: { id: invitee.id, nickname: invitee.nickname }

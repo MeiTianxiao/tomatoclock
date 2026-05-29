@@ -1,5 +1,16 @@
 <template>
   <view class="page">
+    <view v-if="pendingStudyInvites.length" class="card study-invite-card">
+      <text class="study-invite-title">自习室邀请</text>
+      <view v-for="item in pendingStudyInvites" :key="item.id" class="study-invite-item">
+        <text class="study-invite-text">{{ item.inviter?.nickname || '好友' }} 邀请你一起自习</text>
+        <view class="study-invite-actions">
+          <button class="study-invite-btn primary" @click="joinStudyInvite(item)">加入</button>
+          <button class="study-invite-btn" @click="dismissStudyInvite(item)">忽略</button>
+        </view>
+      </view>
+    </view>
+
     <view class="card greeting-card">
       <view class="greeting-row">
         <view class="avatar">
@@ -118,6 +129,13 @@ import { useTimerStore } from '@/stores/timer'
 import { useTodoStore } from '@/stores/todo'
 import { RANK_CONFIG, CATEGORY_CONFIG, type FocusCategory } from '@/types'
 import TodoChecklist from '@/components/TodoChecklist.vue'
+import {
+  getPendingStudyRoomInvites,
+  acceptStudyRoomInvite,
+  rejectStudyRoomInvite,
+  requestStudyRoomSubscribeMessage,
+  type StudyRoomInviteRecord
+} from '@/api/study-room'
 
 const userStore = useUserStore()
 const timerStore = useTimerStore()
@@ -125,6 +143,7 @@ const todoStore = useTodoStore()
 const isWeixinMp = !!(globalThis as any).wx && typeof (globalThis as any).wx.getAccountInfoSync === 'function'
 
 const showFireworks = ref(false)
+const pendingStudyInvites = ref<StudyRoomInviteRecord[]>([])
 
 const selectedDuration = ref(25)
 const selectedMode = ref<'strict' | 'gentle'>('strict')
@@ -231,6 +250,37 @@ function goStudyRoom() {
   uni.navigateTo({ url: '/pages/study-room/index' })
 }
 
+async function loadStudyInvites() {
+  if (!userStore.isLoggedIn) {
+    pendingStudyInvites.value = []
+    return
+  }
+  try {
+    pendingStudyInvites.value = await getPendingStudyRoomInvites()
+  } catch {
+    pendingStudyInvites.value = []
+  }
+}
+
+async function joinStudyInvite(item: StudyRoomInviteRecord) {
+  try {
+    const { room_code } = await acceptStudyRoomInvite(item.id)
+    await loadStudyInvites()
+    uni.navigateTo({ url: `/pages/study-room/index?code=${room_code}` })
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '加入失败', icon: 'none' })
+    loadStudyInvites()
+  }
+}
+
+async function dismissStudyInvite(item: StudyRoomInviteRecord) {
+  try {
+    await rejectStudyRoomInvite(item.id)
+    await loadStudyInvites()
+  } catch {
+  }
+}
+
 const customValues = Array.from({ length: 12 }, (_, i) => (i + 1) * 10)
 const customOptions = customValues.map(v => `${v} 分钟`)
 
@@ -256,6 +306,8 @@ onMounted(() => {
 onShow(() => {
   if (userStore.isLoggedIn) {
     timerStore.syncWithServer()
+    loadStudyInvites()
+    requestStudyRoomSubscribeMessage()
   }
   checkDailyGoal()
 })
@@ -289,6 +341,60 @@ function checkDailyGoal() {
   padding: 28rpx 24rpx 140rpx;
   box-sizing: border-box;
   background: #f2f5ff;
+}
+
+.study-invite-card {
+  margin-bottom: 24rpx;
+  padding: 28rpx;
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+  border: 2rpx solid #bfdbfe;
+}
+
+.study-invite-title {
+  font-size: 28rpx;
+  font-weight: 900;
+  color: #1d4ed8;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.study-invite-item {
+  padding: 16rpx 0;
+  border-top: 1rpx solid rgba(59, 130, 246, 0.15);
+}
+
+.study-invite-item:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.study-invite-text {
+  font-size: 26rpx;
+  color: #334155;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.study-invite-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.study-invite-btn {
+  flex: 1;
+  height: 72rpx;
+  line-height: 72rpx;
+  font-size: 26rpx;
+  border-radius: 16rpx;
+  margin: 0;
+  background: #e2e8f0;
+  color: #475569;
+  &::after { display: none; }
+}
+
+.study-invite-btn.primary {
+  background: #3b82f6;
+  color: #fff;
 }
 
 .card {

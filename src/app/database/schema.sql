@@ -84,6 +84,21 @@ CREATE TABLE IF NOT EXISTS friends (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_friends_unique_pair ON friends(user_id, friend_id);
 CREATE INDEX IF NOT EXISTS idx_friends_user ON friends(user_id);
 
+-- 自习室邀请（小程序内通知，不依赖一次性订阅消息）
+CREATE TABLE IF NOT EXISTS study_room_invites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  inviter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  invitee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  room_code VARCHAR(10) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  responded_at TIMESTAMP WITH TIME ZONE,
+  CONSTRAINT study_room_invites_no_self CHECK (inviter_id <> invitee_id),
+  CONSTRAINT study_room_invites_status CHECK (status IN ('pending', 'accepted', 'rejected', 'expired'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_study_room_invites_invitee ON study_room_invites(invitee_id, status, created_at);
+
 -- 创建视图：本周排行榜
 CREATE OR REPLACE VIEW current_week_leaderboard AS
 SELECT

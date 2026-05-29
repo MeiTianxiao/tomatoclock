@@ -23,6 +23,59 @@ function getBaseURLMeta() {
   }
   return { baseURL: DEFAULT_API_BASE_URL, needsDevConfig: false };
 }
+function resolveErrorMessage(result, statusCode = 200) {
+  if (result && typeof result === "object") {
+    const message = result.message;
+    if (typeof message === "string" && message.trim()) {
+      return message.trim();
+    }
+  }
+  if (typeof result === "string" && result.trim()) {
+    return result.trim().slice(0, 80);
+  }
+  if (statusCode === 404) {
+    return "接口不存在，请确认后端已部署最新版本";
+  }
+  if (statusCode >= 500) {
+    return "服务器繁忙，请稍后再试";
+  }
+  if (statusCode >= 400) {
+    return "请求失败，请稍后再试";
+  }
+  return "操作失败，请稍后再试";
+}
+function handleApiResponse(res, resolve, reject) {
+  const statusCode = res.statusCode || 200;
+  const result = res.data;
+  if (statusCode >= 400 && (!result || typeof result !== "object" || typeof result.code !== "number")) {
+    const msg2 = resolveErrorMessage(result, statusCode);
+    common_vendor.index.showToast({ title: msg2, icon: "none" });
+    reject(new Error(msg2));
+    return;
+  }
+  if (!result || typeof result !== "object" || typeof result.code !== "number") {
+    const msg2 = resolveErrorMessage(result, statusCode);
+    common_vendor.index.showToast({ title: msg2, icon: "none" });
+    reject(new Error(msg2));
+    return;
+  }
+  const payload = result;
+  if (payload.code === 200) {
+    hasRetriedWakeup = false;
+    resolve(payload);
+    return;
+  }
+  if (payload.code === 401) {
+    common_vendor.index.removeStorageSync("token");
+    common_vendor.index.removeStorageSync("user");
+    common_vendor.index.navigateTo({ url: "/pages/auth/index" });
+    reject(new Error("登录失效"));
+    return;
+  }
+  const msg = resolveErrorMessage(payload, statusCode);
+  common_vendor.index.showToast({ title: msg, icon: "none" });
+  reject(new Error(msg));
+}
 async function request(url, options = {}) {
   const { method = "GET", data = {}, headers = {} } = options;
   const token = common_vendor.index.getStorageSync("token");
@@ -46,19 +99,7 @@ async function request(url, options = {}) {
       },
       timeout: 9e4,
       success: (res) => {
-        const result = res.data;
-        if (result.code === 200) {
-          hasRetriedWakeup = false;
-          resolve(result);
-        } else if (result.code === 401) {
-          common_vendor.index.removeStorageSync("token");
-          common_vendor.index.removeStorageSync("user");
-          common_vendor.index.navigateTo({ url: "/pages/auth/index" });
-          reject(new Error("登录失效"));
-        } else {
-          common_vendor.index.showToast({ title: result.message, icon: "none" });
-          reject(new Error(result.message));
-        }
+        handleApiResponse(res, resolve, reject);
       },
       fail: (err) => {
         const msg = (err == null ? void 0 : err.errMsg) || "";
@@ -78,19 +119,7 @@ async function request(url, options = {}) {
             },
             timeout: 9e4,
             success: (res) => {
-              const result = res.data;
-              if (result.code === 200) {
-                hasRetriedWakeup = false;
-                resolve(result);
-              } else if (result.code === 401) {
-                common_vendor.index.removeStorageSync("token");
-                common_vendor.index.removeStorageSync("user");
-                common_vendor.index.navigateTo({ url: "/pages/auth/index" });
-                reject(new Error("登录失效"));
-              } else {
-                common_vendor.index.showToast({ title: result.message, icon: "none" });
-                reject(new Error(result.message));
-              }
+              handleApiResponse(res, resolve, reject);
             },
             fail: (err2) => {
               common_vendor.index.showToast({ title: "网络请求失败", icon: "none" });

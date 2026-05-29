@@ -35,6 +35,70 @@ export interface ResponseData<T = any> {
   data: T
 }
 
+function resolveErrorMessage(result: unknown, statusCode = 200): string {
+  if (result && typeof result === 'object') {
+    const message = (result as ResponseData).message
+    if (typeof message === 'string' && message.trim()) {
+      return message.trim()
+    }
+  }
+  if (typeof result === 'string' && result.trim()) {
+    return result.trim().slice(0, 80)
+  }
+  if (statusCode === 404) {
+    return '接口不存在，请确认后端已部署最新版本'
+  }
+  if (statusCode >= 500) {
+    return '服务器繁忙，请稍后再试'
+  }
+  if (statusCode >= 400) {
+    return '请求失败，请稍后再试'
+  }
+  return '操作失败，请稍后再试'
+}
+
+function handleApiResponse<T>(
+  res: UniApp.RequestSuccessCallbackResult,
+  resolve: (value: ResponseData<T>) => void,
+  reject: (reason?: unknown) => void
+) {
+  const statusCode = res.statusCode || 200
+  const result = res.data as ResponseData<T> | string | null
+
+  if (statusCode >= 400 && (!result || typeof result !== 'object' || typeof (result as ResponseData).code !== 'number')) {
+    const msg = resolveErrorMessage(result, statusCode)
+    uni.showToast({ title: msg, icon: 'none' })
+    reject(new Error(msg))
+    return
+  }
+
+  if (!result || typeof result !== 'object' || typeof (result as ResponseData).code !== 'number') {
+    const msg = resolveErrorMessage(result, statusCode)
+    uni.showToast({ title: msg, icon: 'none' })
+    reject(new Error(msg))
+    return
+  }
+
+  const payload = result as ResponseData<T>
+  if (payload.code === 200) {
+    hasRetriedWakeup = false
+    resolve(payload)
+    return
+  }
+
+  if (payload.code === 401) {
+    uni.removeStorageSync('token')
+    uni.removeStorageSync('user')
+    uni.navigateTo({ url: '/pages/auth/index' })
+    reject(new Error('登录失效'))
+    return
+  }
+
+  const msg = resolveErrorMessage(payload, statusCode)
+  uni.showToast({ title: msg, icon: 'none' })
+  reject(new Error(msg))
+}
+
 export async function request<T = any>(
   url: string,
   options: {
@@ -69,19 +133,7 @@ export async function request<T = any>(
       },
       timeout: 90000,
       success: (res) => {
-        const result = res.data as ResponseData<T>
-        if (result.code === 200) {
-          hasRetriedWakeup = false
-          resolve(result)
-        } else if (result.code === 401) {
-          uni.removeStorageSync('token')
-          uni.removeStorageSync('user')
-          uni.navigateTo({ url: '/pages/auth/index' })
-          reject(new Error('登录失效'))
-        } else {
-          uni.showToast({ title: result.message, icon: 'none' })
-          reject(new Error(result.message))
-        }
+        handleApiResponse<T>(res, resolve, reject)
       },
       fail: (err) => {
         const msg = (err as any)?.errMsg || ''
@@ -101,19 +153,7 @@ export async function request<T = any>(
             },
             timeout: 90000,
             success: (res) => {
-              const result = res.data as ResponseData<T>
-              if (result.code === 200) {
-                hasRetriedWakeup = false
-                resolve(result)
-              } else if (result.code === 401) {
-                uni.removeStorageSync('token')
-                uni.removeStorageSync('user')
-                uni.navigateTo({ url: '/pages/auth/index' })
-                reject(new Error('登录失效'))
-              } else {
-                uni.showToast({ title: result.message, icon: 'none' })
-                reject(new Error(result.message))
-              }
+              handleApiResponse<T>(res, resolve, reject)
             },
             fail: (err2) => {
               uni.showToast({ title: '网络请求失败', icon: 'none' })
