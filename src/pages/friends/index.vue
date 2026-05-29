@@ -1,7 +1,12 @@
 <template>
   <view class="page">
     <view class="page-head">
-      <text class="page-title">好友</text>
+      <view class="page-head-left">
+        <view class="back-btn" @click="goBack">
+          <text class="back-icon">‹</text>
+        </view>
+        <text class="page-title">好友</text>
+      </view>
       <button v-if="isWeixinMp" class="mini-btn" @click="enableFriendNotifications">开启通知</button>
     </view>
 
@@ -151,6 +156,10 @@ async function enableFriendNotifications() {
   }
 }
 
+function goBack() {
+  uni.navigateBack()
+}
+
 async function refreshUser() {
   try {
     const u = await getUserInfo()
@@ -285,6 +294,28 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   margin: 10rpx 0 26rpx;
+}
+
+.page-head-left {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -12rpx;
+}
+
+.back-icon {
+  font-size: 52rpx;
+  line-height: 1;
+  color: #0f172a;
+  font-weight: 300;
 }
 
 .page-title {

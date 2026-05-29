@@ -1372,6 +1372,40 @@ app.get('/api/sessions/today', async (req, res) => {
   res.json({ code: 200, message: 'success', data: userSessions });
 });
 
+function mergeUserWithWeeklyStats(user, statsMap) {
+  const stats = statsMap.get(user.id);
+  return {
+    id: user.id,
+    nickname: user.nickname || '',
+    avatar_url: user.avatar_url || null,
+    current_rank: stats?.current_rank || 'intern',
+    total_minutes: stats?.total_minutes || 0,
+    total_points: stats?.total_points || 0
+  };
+}
+
+function buildLeaderboard(entries, limit) {
+  return entries
+    .filter(e => e.nickname)
+    .sort((a, b) => (b.total_points - a.total_points) || (b.total_minutes - a.total_minutes))
+    .slice(0, limit)
+    .map((entry, index) => ({
+      ...entry,
+      position: index + 1
+    }));
+}
+
+async function fetchWeeklyStatsMap(userIds, weekStart) {
+  if (!userIds.length) return new Map();
+  const { data, error } = await supabase
+    .from('weekly_stats')
+    .select('user_id,current_rank,total_minutes,total_points')
+    .eq('week_start', weekStart)
+    .in('user_id', userIds);
+  if (error) throw new Error(error.message);
+  return new Map((data || []).map(row => [row.user_id, row]));
+}
+
 app.get('/api/leaderboard/friends', async (req, res) => {
   const token = getToken(req);
   const limit = parseInt(req.query.limit) || 50;
@@ -1392,62 +1426,35 @@ app.get('/api/leaderboard/friends', async (req, res) => {
         return res.json({ code: 200, message: 'success', data: [] });
       }
 
-      const { data, error } = await supabase
-        .from('weekly_stats')
-        .select('user_id,current_rank,total_minutes,total_points,users!weekly_stats_user_id_fkey(id,nickname,avatar_url)')
-        .eq('week_start', weekStart)
-        .in('user_id', ids)
-        .order('total_points', { ascending: false })
-        .order('total_minutes', { ascending: false })
-        .limit(limit);
-
-      if (error) {
-        return res.status(500).json({ code: 500, message: error.message });
+      const { data: userRows, error: usersError } = await supabase
+        .from('users')
+        .select('id,nickname,avatar_url')
+        .in('id', ids);
+      if (usersError) {
+        return res.status(500).json({ code: 500, message: usersError.message });
       }
 
-      const leaderboard = (data || [])
-        .map((row, index) => ({
-          id: row.users?.id || row.user_id,
-          nickname: row.users?.nickname || '',
-          avatar_url: row.users?.avatar_url || null,
-          current_rank: row.current_rank,
-          total_minutes: row.total_minutes,
-          total_points: row.total_points,
-          position: index + 1
-        }))
-        .filter(e => e.nickname);
+      const statsMap = await fetchWeeklyStatsMap(ids, weekStart);
+      const leaderboard = buildLeaderboard(
+        (userRows || []).map(user => mergeUserWithWeeklyStats(user, statsMap)),
+        limit
+      );
 
       return res.json({ code: 200, message: 'success', data: leaderboard });
-    } catch {
-      return res.status(500).json({ code: 500, message: '服务异常' });
+    } catch (e) {
+      return res.status(500).json({ code: 500, message: e?.message || '服务异常' });
     }
   }
 
   const ids = Array.from(
     new Set([token, ...friends.filter(f => f.user_id === token).map(f => f.friend_id).filter(Boolean)])
   );
-  const thisWeekStats = weeklyStats.filter(s => s.week_start === weekStart && ids.includes(s.user_id));
-  const leaderboard = thisWeekStats
-    .map(s => {
-      const user = users.find(u => u.id === s.user_id);
-      return user
-        ? {
-            id: user.id,
-            nickname: user.nickname,
-            avatar_url: user.avatar_url,
-            current_rank: s.current_rank,
-            total_minutes: s.total_minutes,
-            total_points: s.total_points
-          }
-        : null;
-    })
-    .filter(Boolean)
-    .sort((a, b) => (b.total_points - a.total_points) || (b.total_minutes - a.total_minutes))
-    .slice(0, limit)
-    .map((entry, index) => ({
-      ...entry,
-      position: index + 1
-    }));
+  const thisWeekStats = weeklyStats.filter(s => s.week_start === weekStart);
+  const statsMap = new Map(thisWeekStats.map(s => [s.user_id, s]));
+  const leaderboard = buildLeaderboard(
+    ids.map(id => users.find(u => u.id === id)).filter(Boolean).map(user => mergeUserWithWeeklyStats(user, statsMap)),
+    limit
+  );
 
   return res.json({ code: 200, message: 'success', data: leaderboard });
 });
@@ -1458,57 +1465,33 @@ app.get('/api/leaderboard', async (req, res) => {
 
   if (supabase) {
     try {
-      const { data, error } = await supabase
-        .from('weekly_stats')
-        .select('user_id,current_rank,total_minutes,total_points,users!weekly_stats_user_id_fkey(id,nickname,avatar_url)')
-        .eq('week_start', weekStart)
-        .order('total_points', { ascending: false })
-        .order('total_minutes', { ascending: false })
-        .limit(limit);
-
-      if (error) {
-        return res.status(500).json({ code: 500, message: error.message });
+      const { data: userRows, error: usersError } = await supabase
+        .from('users')
+        .select('id,nickname,avatar_url')
+        .not('nickname', 'is', null);
+      if (usersError) {
+        return res.status(500).json({ code: 500, message: usersError.message });
       }
 
-      const leaderboard = (data || [])
-        .map((row, index) => ({
-          id: row.users?.id || row.user_id,
-          nickname: row.users?.nickname || '',
-          avatar_url: row.users?.avatar_url || null,
-          current_rank: row.current_rank,
-          total_minutes: row.total_minutes,
-          total_points: row.total_points,
-          position: index + 1
-        }))
-        .filter(e => e.nickname);
+      const userIds = (userRows || []).map(u => u.id);
+      const statsMap = await fetchWeeklyStatsMap(userIds, weekStart);
+      const leaderboard = buildLeaderboard(
+        (userRows || []).map(user => mergeUserWithWeeklyStats(user, statsMap)),
+        limit
+      );
 
       return res.json({ code: 200, message: 'success', data: leaderboard });
-    } catch {
-      return res.status(500).json({ code: 500, message: '服务异常' });
+    } catch (e) {
+      return res.status(500).json({ code: 500, message: e?.message || '服务异常' });
     }
   }
   
   const thisWeekStats = weeklyStats.filter(s => s.week_start === weekStart);
-  
-  const leaderboard = thisWeekStats
-    .map(s => {
-      const user = users.find(u => u.id === s.user_id);
-      return user ? {
-        id: user.id,
-        nickname: user.nickname,
-        avatar_url: user.avatar_url,
-        current_rank: s.current_rank,
-        total_minutes: s.total_minutes,
-        total_points: s.total_points
-      } : null;
-    })
-    .filter(Boolean)
-    .sort((a, b) => (b.total_points - a.total_points) || (b.total_minutes - a.total_minutes))
-    .slice(0, limit)
-    .map((entry, index) => ({
-      ...entry,
-      position: index + 1
-    }));
+  const statsMap = new Map(thisWeekStats.map(s => [s.user_id, s]));
+  const leaderboard = buildLeaderboard(
+    users.map(user => mergeUserWithWeeklyStats(user, statsMap)),
+    limit
+  );
   
   res.json({ code: 200, message: 'success', data: leaderboard });
 });

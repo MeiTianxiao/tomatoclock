@@ -15,15 +15,14 @@
       </view>
     </view>
 
-    <view class="timer-info">
-      <view class="info-item">
-        <text class="info-value">{{ dailyPoints }}</text>
-        <text class="info-label">总积分</text>
-      </view>
-      <view class="info-item">
-        <image class="rank-img" :src="rankInfo.avatar" mode="aspectFill" />
-        <text class="info-label">{{ rankInfo.name }}</text>
-      </view>
+    <view class="timer-profile">
+      <image class="rank-img" :src="rankInfo.avatar" mode="aspectFill" />
+      <text class="rank-name">{{ rankInfo.name }}</text>
+    </view>
+
+    <view class="timer-points">
+      <text class="info-value">{{ dailyPoints }}</text>
+      <text class="info-label">总积分</text>
     </view>
 
     <view class="timer-controls">
@@ -43,7 +42,7 @@
     </view>
 
     <view class="tips-section">
-      <text class="tips-title">💡 小贴士</text>
+      <text class="tips-title">💡 申论名句</text>
       <text class="tips-content">{{ currentTip }}</text>
     </view>
 
@@ -476,15 +475,32 @@ onUnmounted(() => {
   display: block;
 }
 
-.timer-info {
+.timer-profile {
   display: flex;
-  justify-content: center;
-  gap: 80rpx;
-  margin-bottom: 80rpx;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24rpx;
 }
 
-.info-item {
+.rank-img {
+  width: 33vw;
+  height: 33vw;
+  border-radius: 50%;
+  display: block;
+  background: rgba(255, 255, 255, 0.15);
+  border: 4rpx solid rgba(255, 255, 255, 0.25);
+}
+
+.rank-name {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 12rpx;
+  display: block;
+}
+
+.timer-points {
   text-align: center;
+  margin-bottom: 80rpx;
 }
 
 .info-value {
@@ -492,15 +508,6 @@ onUnmounted(() => {
   font-weight: 700;
   color: #fff;
   display: block;
-}
-
-.rank-img {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 32rpx;
-  display: block;
-  margin: 0 auto;
-  background: rgba(255, 255, 255, 0.2);
 }
 
 .info-label {

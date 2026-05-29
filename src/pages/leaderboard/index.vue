@@ -109,7 +109,7 @@
         <text class="loading-text">加载中...</text>
       </view>
 
-      <view v-else-if="friendLeaderboard.length <= 1" class="friend-body">
+      <view v-else-if="friendCount === 0" class="friend-body">
         <text class="friend-tip">暂无好友。到「设置 → 好友管理」发送邀请码并互相同意后，这里就会出现好友排行榜。</text>
         <button class="btn btn-primary btn-block" @click="goFriends">去好友管理</button>
       </view>
@@ -191,6 +191,7 @@ import { onShow, onHide } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { useTimerStore } from '@/stores/timer'
 import { getLeaderboard, getFriendLeaderboard, type LeaderboardItem } from '@/api/leaderboard'
+import { getFriends } from '@/api/friends'
 import { RANK_CONFIG } from '@/types'
 
 const userStore = useUserStore()
@@ -200,6 +201,7 @@ const leaderboard = ref<LeaderboardItem[]>([])
 const loading = ref(false)
 const activeBoard = ref<'all' | 'friend'>('all')
 const friendLeaderboard = ref<LeaderboardItem[]>([])
+const friendCount = ref(0)
 const friendLoading = ref(false)
 let refreshTimer: any = null
 
@@ -252,8 +254,12 @@ async function loadLeaderboard(silent = false) {
 async function loadFriendBoard(silent = false) {
   friendLoading.value = true
   try {
-    const data = await getFriendLeaderboard(50)
+    const [data, friendsList] = await Promise.all([
+      getFriendLeaderboard(50),
+      getFriends().catch(() => [])
+    ])
     friendLeaderboard.value = data
+    friendCount.value = friendsList.length
   } catch (error) {
     if (!silent) uni.showToast({ title: '加载好友榜失败', icon: 'none' })
   } finally {
