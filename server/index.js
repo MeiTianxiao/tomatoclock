@@ -153,6 +153,23 @@ function formatShanghaiTime(date = new Date()) {
   return date.toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' })
 }
 
+const STUDY_ROOM_INVITE_TMPL_ID = 'RTBtfzvBGRjq6g8cRCX6IsN_2spGTMwUMmtJFxsRbSc';
+
+async function areFriends(userId, friendId) {
+  if (!userId || !friendId || userId === friendId) return false;
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('friends')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('friend_id', friendId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return !!data;
+  }
+  return friends.some(f => f.user_id === userId && f.friend_id === friendId);
+}
+
 // 内存中存储自习室信息
 // key: 房间验证码, value: { code, created_at, members: Map(userId -> { user, joined_at, last_ping }) }
 const studyRooms = new Map();
@@ -1616,6 +1633,79 @@ app.get('/api/leaderboard', async (req, res) => {
 // =====================================
 // 自习室 API (Study Room)
 // =====================================
+
+app.post('/api/study-room/invite', async (req, res) => {
+  const token = getToken(req);
+  if (!token) return res.status(401).json({ code: 401, message: '未登录' });
+
+  const roomCode = String(req.body?.code || req.body?.room_code || '')
+    .trim()
+    .toUpperCase();
+  const friendId = req.body?.friend_id;
+  if (!roomCode || !friendId) {
+    return res.status(400).json({ code: 400, message: '缺少自习室验证码或好友信息' });
+  }
+
+  const room = studyRooms.get(roomCode);
+  if (!room) {
+    return res.status(404).json({ code: 404, message: '自习室不存在或已关闭' });
+  }
+  if (!room.members.has(token)) {
+    return res.status(403).json({ code: 403, message: '请先加入自习室再邀请好友' });
+  }
+
+  try {
+    const isFriend = await areFriends(token, friendId);
+    if (!isFriend) {
+      return res.status(400).json({ code: 400, message: '只能邀请已添加的好友' });
+    }
+
+    let inviter = null;
+    let invitee = null;
+    if (supabase) {
+      const { data: inviterData } = await supabase.from('users').select('id,nickname').eq('id', token).maybeSingle();
+      const { data: inviteeData } = await supabase
+        .from('users')
+        .select('id,nickname,wechat_openid')
+        .eq('id', friendId)
+        .maybeSingle();
+      inviter = inviterData;
+      invitee = inviteeData;
+    } else {
+      inviter = users.find(u => u.id === token);
+      invitee = users.find(u => u.id === friendId);
+    }
+
+    if (!invitee) {
+      return res.status(404).json({ code: 404, message: '好友不存在' });
+    }
+
+    let notified = false;
+    let notifyMessage = '好友未绑定微信，无法推送通知';
+    if (invitee.wechat_openid && inviter) {
+      const page = `pages/study-room/index?code=${encodeURIComponent(roomCode)}`;
+      const sendResult = await sendWechatSubscribeMessage(invitee.wechat_openid, STUDY_ROOM_INVITE_TMPL_ID, page, {
+        thing1: { value: `自习邀请 码${roomCode}`.slice(0, 20) },
+        name2: { value: (inviter.nickname || '好友').slice(0, 10) },
+        time3: { value: formatShanghaiTime() }
+      });
+      notified = sendResult.ok;
+      notifyMessage = sendResult.ok ? '' : sendResult.message || '通知发送失败';
+    }
+
+    return res.json({
+      code: 200,
+      message: 'success',
+      data: {
+        notified,
+        notifyMessage,
+        invitee: { id: invitee.id, nickname: invitee.nickname }
+      }
+    });
+  } catch (e) {
+    return res.status(500).json({ code: 500, message: e?.message || '服务异常' });
+  }
+});
 
 app.post('/api/study-room/join', async (req, res) => {
   const token = getToken(req);

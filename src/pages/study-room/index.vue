@@ -31,7 +31,12 @@
       </view>
       
       <view class="members-section">
-        <text class="label">当前成员 ({{ members.length }}人)</text>
+        <view class="members-head">
+          <text class="label">当前成员 ({{ members.length }}人)</text>
+          <view class="add-btn" @click="openFriendPicker">
+            <text class="add-icon">+</text>
+          </view>
+        </view>
         <view class="members-grid">
           <view class="member" v-for="m in members" :key="m.id">
             <image class="avatar" :src="m.avatar_url || defaultAvatar" mode="aspectFill" />
@@ -39,21 +44,51 @@
             <text class="status">专注中...</text>
           </view>
         </view>
+        <text class="invite-tip">点 + 邀请好友，对方点微信通知即可直接进入本自习室</text>
       </view>
 
       <view class="action-section">
         <button class="btn primary-btn" @click="leaveRoom">离开自习室</button>
       </view>
     </view>
+
+    <view v-if="showFriendPicker" class="picker-mask" @click="closeFriendPicker">
+      <view class="picker-panel" @click.stop>
+        <view class="picker-head">
+          <text class="picker-title">邀请好友</text>
+          <text class="picker-close" @click="closeFriendPicker">×</text>
+        </view>
+        <view v-if="friendsLoading" class="picker-empty">加载中...</view>
+        <view v-else-if="!availableFriends.length" class="picker-empty">暂无好友可邀请</view>
+        <scroll-view v-else scroll-y class="picker-list">
+          <view
+            v-for="friend in availableFriends"
+            :key="friend.id"
+            class="picker-item"
+            @click="inviteFriend(friend)"
+          >
+            <image class="picker-avatar" :src="friend.avatar_url || defaultAvatar" mode="aspectFill" />
+            <text class="picker-name">{{ friend.nickname }}</text>
+            <text class="picker-action">{{ invitingId === friend.id ? '发送中...' : '邀请' }}</text>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { post, get } from '@/utils/request'
 import { useUserStore } from '@/stores/user'
+import { getFriends } from '@/api/friends'
+import { inviteFriendToStudyRoom } from '@/api/study-room'
+import type { User } from '@/types'
 
 const userStore = useUserStore()
+const isWeixinMp = !!(globalThis as any).wx && typeof (globalThis as any).wx.getAccountInfoSync === 'function'
+const STUDY_ROOM_INVITE_TMPL_ID = 'RTBtfzvBGRjq6g8cRCX6IsN_2spGTMwUMmtJFxsRbSc'
 
 const loading = ref(false)
 const roomCode = ref('')
@@ -61,8 +96,104 @@ const currentRoom = ref('')
 const inRoom = ref(false)
 const members = ref<any[]>([])
 const defaultAvatar = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
+const pendingAutoJoinCode = ref('')
+const showFriendPicker = ref(false)
+const friends = ref<User[]>([])
+const friendsLoading = ref(false)
+const invitingId = ref('')
 let pingTimer: any = null
 let joinTime: number = 0
+
+const availableFriends = computed(() => {
+  const memberIds = new Set(members.value.map(m => m.id))
+  return friends.value.filter(f => !memberIds.has(f.id))
+})
+
+onLoad((options: any) => {
+  const code = options?.code || options?.room_code
+  if (code) {
+    pendingAutoJoinCode.value = String(code).toUpperCase()
+    roomCode.value = pendingAutoJoinCode.value
+    uni.setStorageSync('pending-study-room-code', pendingAutoJoinCode.value)
+  }
+})
+
+async function ensureStudyRoomNotifications() {
+  if (!isWeixinMp) return
+  try {
+    await uni.requestSubscribeMessage({ tmplIds: [STUDY_ROOM_INVITE_TMPL_ID] })
+  } catch {
+  }
+}
+
+async function loadFriends() {
+  friendsLoading.value = true
+  try {
+    friends.value = await getFriends()
+  } catch {
+    friends.value = []
+  } finally {
+    friendsLoading.value = false
+  }
+}
+
+async function openFriendPicker() {
+  await ensureStudyRoomNotifications()
+  showFriendPicker.value = true
+  await loadFriends()
+}
+
+function closeFriendPicker() {
+  showFriendPicker.value = false
+  invitingId.value = ''
+}
+
+async function inviteFriend(friend: User) {
+  if (!currentRoom.value || invitingId.value) return
+  invitingId.value = friend.id
+  try {
+    const result = await inviteFriendToStudyRoom(currentRoom.value, friend.id)
+    if (result.notified) {
+      uni.showToast({ title: `已通知 ${friend.nickname}`, icon: 'success' })
+      closeFriendPicker()
+    } else {
+      uni.showModal({
+        title: '邀请已记录',
+        content:
+          result.notifyMessage ||
+          '对方可能未开启自习室通知。请让对方在小程序里授权订阅消息，或复制验证码手动发送。',
+        showCancel: false
+      })
+    }
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '邀请失败', icon: 'none' })
+  } finally {
+    invitingId.value = ''
+  }
+}
+
+async function joinRoomByCode(code: string) {
+  const normalized = String(code || '').trim().toUpperCase()
+  if (!normalized) return false
+  loading.value = true
+  try {
+    const res = await post('/study-room/join', { code: normalized })
+    if (res.code === 200) {
+      currentRoom.value = res.data.code
+      members.value = res.data.members || []
+      inRoom.value = true
+      joinTime = Date.now()
+      startPing()
+      uni.showToast({ title: '已进入自习室', icon: 'success' })
+      return true
+    }
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '加入失败', icon: 'none' })
+  } finally {
+    loading.value = false
+  }
+  return false
+}
 
 async function createRoom() {
   loading.value = true
@@ -77,7 +208,7 @@ async function createRoom() {
       uni.showToast({ title: '已创建自习室', icon: 'success' })
     }
   } catch (e: any) {
-    uni.showToast({ title: e.message || '创建失败', icon: 'none' })
+    uni.showToast({ title: e?.message || '创建失败', icon: 'none' })
   } finally {
     loading.value = false
   }
@@ -85,22 +216,24 @@ async function createRoom() {
 
 async function joinRoom() {
   if (!roomCode.value) return uni.showToast({ title: '请输入验证码', icon: 'none' })
-  loading.value = true
-  try {
-    const res = await post('/study-room/join', { code: roomCode.value.toUpperCase() })
-    if (res.code === 200) {
-      currentRoom.value = res.data.code
-      members.value = res.data.members || []
-      inRoom.value = true
-      joinTime = Date.now()
-      startPing()
-      uni.showToast({ title: '已进入自习室', icon: 'success' })
-    }
-  } catch (e: any) {
-    uni.showToast({ title: e.message || '加入失败', icon: 'none' })
-  } finally {
-    loading.value = false
+  await joinRoomByCode(roomCode.value)
+}
+
+async function tryAutoJoin() {
+  if (inRoom.value) return
+
+  const code = pendingAutoJoinCode.value || uni.getStorageSync('pending-study-room-code')
+  if (!code) return
+
+  if (!userStore.isLoggedIn) {
+    uni.navigateTo({ url: '/pages/auth/index' })
+    return
   }
+
+  uni.removeStorageSync('pending-study-room-code')
+  pendingAutoJoinCode.value = ''
+  roomCode.value = String(code).toUpperCase()
+  await joinRoomByCode(roomCode.value)
 }
 
 async function fetchMembers() {
@@ -152,7 +285,7 @@ async function leaveRoom() {
       if (res.confirm) {
         stopPing()
         const durationMinutes = Math.floor((Date.now() - joinTime) / 60000)
-        const points = Math.floor(durationMinutes * 1.5) // 自习室积分1.5倍
+        const points = Math.floor(durationMinutes * 1.5)
         
         try {
           await post('/study-room/leave', { code: currentRoom.value })
@@ -174,6 +307,16 @@ async function leaveRoom() {
     }
   })
 }
+
+onMounted(() => {
+  userStore.loadUser()
+  tryAutoJoin()
+})
+
+onShow(() => {
+  userStore.loadUser()
+  tryAutoJoin()
+})
 
 onUnmounted(() => {
   stopPing()
@@ -295,6 +438,39 @@ onUnmounted(() => {
     display: block;
   }
 }
+.members-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+  .label {
+    margin-bottom: 0;
+  }
+}
+.add-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 32rpx;
+  background: #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 20rpx rgba(59, 130, 246, 0.25);
+}
+.add-icon {
+  color: #fff;
+  font-size: 44rpx;
+  line-height: 1;
+  font-weight: 300;
+  margin-top: -4rpx;
+}
+.invite-tip {
+  display: block;
+  margin-top: 20rpx;
+  font-size: 22rpx;
+  color: #94a3b8;
+  line-height: 1.5;
+}
 .members-grid {
   display: flex;
   flex-wrap: wrap;
@@ -314,19 +490,6 @@ onUnmounted(() => {
     border: 4rpx solid #3b82f6;
     margin-bottom: 16rpx;
   }
-  .avatar-empty {
-    width: 120rpx;
-    height: 120rpx;
-    border-radius: 60rpx;
-    background: #f1f5f9;
-    color: #94a3b8;
-    font-size: 48rpx;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 16rpx;
-    border: 4rpx dashed #cbd5e1;
-  }
   .name {
     font-size: 26rpx;
     font-weight: bold;
@@ -343,10 +506,72 @@ onUnmounted(() => {
     margin-top: 4rpx;
   }
 }
-.member.empty .name {
-  color: #94a3b8;
-}
 .action-section {
   margin-top: 60rpx;
+}
+.picker-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: flex-end;
+  z-index: 1000;
+}
+.picker-panel {
+  width: 100%;
+  max-height: 70vh;
+  background: #fff;
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 28rpx 24rpx 40rpx;
+  box-sizing: border-box;
+}
+.picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+.picker-title {
+  font-size: 32rpx;
+  font-weight: 900;
+  color: #0f172a;
+}
+.picker-close {
+  font-size: 44rpx;
+  color: #94a3b8;
+  line-height: 1;
+  padding: 0 8rpx;
+}
+.picker-list {
+  max-height: 52vh;
+}
+.picker-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 12rpx;
+  border-bottom: 1rpx solid #f1f5f9;
+}
+.picker-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 40rpx;
+  margin-right: 20rpx;
+}
+.picker-name {
+  flex: 1;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #0f172a;
+}
+.picker-action {
+  font-size: 26rpx;
+  color: #3b82f6;
+  font-weight: 700;
+}
+.picker-empty {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 26rpx;
+  padding: 60rpx 0;
 }
 </style>

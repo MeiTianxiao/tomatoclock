@@ -144,12 +144,14 @@ async function enableFriendNotifications() {
     const res: any = await uni.requestSubscribeMessage({
       tmplIds: [
         't_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU',
-        '83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU'
+        '83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU',
+        'RTBtfzvBGRjq6g8cRCX6IsN_2spGTMwUMmtJFxsRbSc'
       ]
     })
     const ok =
       res?.['t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU'] === 'accept' ||
-      res?.['83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU'] === 'accept'
+      res?.['83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU'] === 'accept' ||
+      res?.['RTBtfzvBGRjq6g8cRCX6IsN_2spGTMwUMmtJFxsRbSc'] === 'accept'
     uni.showToast({ title: ok ? '已开启通知' : '未开启通知', icon: 'none' })
   } catch (e: any) {
     uni.showToast({ title: e?.errMsg || '开启失败', icon: 'none' })
@@ -232,7 +234,8 @@ async function sendInvite() {
     uni.requestSubscribeMessage({
       tmplIds: [
         't_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU',
-        '83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU'
+        '83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU',
+        'RTBtfzvBGRjq6g8cRCX6IsN_2spGTMwUMmtJFxsRbSc'
       ],
       complete: () => {
         performSend()

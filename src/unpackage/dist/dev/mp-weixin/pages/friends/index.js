@@ -39,10 +39,11 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         const res = await common_vendor.index.requestSubscribeMessage({
           tmplIds: [
             "t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU",
-            "83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU"
+            "83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU",
+            "RTBtfzvBGRjq6g8cRCX6IsN_2spGTMwUMmtJFxsRbSc"
           ]
         });
-        const ok = (res == null ? void 0 : res["t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU"]) === "accept" || (res == null ? void 0 : res["83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU"]) === "accept";
+        const ok = (res == null ? void 0 : res["t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU"]) === "accept" || (res == null ? void 0 : res["83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU"]) === "accept" || (res == null ? void 0 : res["RTBtfzvBGRjq6g8cRCX6IsN_2spGTMwUMmtJFxsRbSc"]) === "accept";
         common_vendor.index.showToast({ title: ok ? "已开启通知" : "未开启通知", icon: "none" });
       } catch (e) {
         common_vendor.index.showToast({ title: (e == null ? void 0 : e.errMsg) || "开启失败", icon: "none" });
@@ -118,7 +119,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         common_vendor.index.requestSubscribeMessage({
           tmplIds: [
             "t_isd35azCSmKHjy5crOhlLaGntp8Z-h-_9xQqaWsjU",
-            "83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU"
+            "83FIcdSm2TPFAiP4g8xLB1Ez86j3svdAnbsS60NHvAU",
+            "RTBtfzvBGRjq6g8cRCX6IsN_2spGTMwUMmtJFxsRbSc"
           ],
           complete: () => {
             performSend();

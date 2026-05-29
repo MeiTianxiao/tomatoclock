@@ -2,18 +2,111 @@
 const common_vendor = require("../../common/vendor.js");
 const utils_request = require("../../utils/request.js");
 const stores_user = require("../../stores/user.js");
+const api_friends = require("../../api/friends.js");
+const api_studyRoom = require("../../api/study-room.js");
+const STUDY_ROOM_INVITE_TMPL_ID = "RTBtfzvBGRjq6g8cRCX6IsN_2spGTMwUMmtJFxsRbSc";
 const defaultAvatar = "https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0";
 const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "index",
   setup(__props) {
-    stores_user.useUserStore();
+    const userStore = stores_user.useUserStore();
+    const isWeixinMp = !!globalThis.wx && typeof globalThis.wx.getAccountInfoSync === "function";
     const loading = common_vendor.ref(false);
     const roomCode = common_vendor.ref("");
     const currentRoom = common_vendor.ref("");
     const inRoom = common_vendor.ref(false);
     const members = common_vendor.ref([]);
+    const pendingAutoJoinCode = common_vendor.ref("");
+    const showFriendPicker = common_vendor.ref(false);
+    const friends = common_vendor.ref([]);
+    const friendsLoading = common_vendor.ref(false);
+    const invitingId = common_vendor.ref("");
     let pingTimer = null;
     let joinTime = 0;
+    const availableFriends = common_vendor.computed(() => {
+      const memberIds = new Set(members.value.map((m) => m.id));
+      return friends.value.filter((f) => !memberIds.has(f.id));
+    });
+    common_vendor.onLoad((options) => {
+      const code = (options == null ? void 0 : options.code) || (options == null ? void 0 : options.room_code);
+      if (code) {
+        pendingAutoJoinCode.value = String(code).toUpperCase();
+        roomCode.value = pendingAutoJoinCode.value;
+        common_vendor.index.setStorageSync("pending-study-room-code", pendingAutoJoinCode.value);
+      }
+    });
+    async function ensureStudyRoomNotifications() {
+      if (!isWeixinMp)
+        return;
+      try {
+        await common_vendor.index.requestSubscribeMessage({ tmplIds: [STUDY_ROOM_INVITE_TMPL_ID] });
+      } catch {
+      }
+    }
+    async function loadFriends() {
+      friendsLoading.value = true;
+      try {
+        friends.value = await api_friends.getFriends();
+      } catch {
+        friends.value = [];
+      } finally {
+        friendsLoading.value = false;
+      }
+    }
+    async function openFriendPicker() {
+      await ensureStudyRoomNotifications();
+      showFriendPicker.value = true;
+      await loadFriends();
+    }
+    function closeFriendPicker() {
+      showFriendPicker.value = false;
+      invitingId.value = "";
+    }
+    async function inviteFriend(friend) {
+      if (!currentRoom.value || invitingId.value)
+        return;
+      invitingId.value = friend.id;
+      try {
+        const result = await api_studyRoom.inviteFriendToStudyRoom(currentRoom.value, friend.id);
+        if (result.notified) {
+          common_vendor.index.showToast({ title: `已通知 ${friend.nickname}`, icon: "success" });
+          closeFriendPicker();
+        } else {
+          common_vendor.index.showModal({
+            title: "邀请已记录",
+            content: result.notifyMessage || "对方可能未开启自习室通知。请让对方在小程序里授权订阅消息，或复制验证码手动发送。",
+            showCancel: false
+          });
+        }
+      } catch (e) {
+        common_vendor.index.showToast({ title: (e == null ? void 0 : e.message) || "邀请失败", icon: "none" });
+      } finally {
+        invitingId.value = "";
+      }
+    }
+    async function joinRoomByCode(code) {
+      const normalized = String(code || "").trim().toUpperCase();
+      if (!normalized)
+        return false;
+      loading.value = true;
+      try {
+        const res = await utils_request.post("/study-room/join", { code: normalized });
+        if (res.code === 200) {
+          currentRoom.value = res.data.code;
+          members.value = res.data.members || [];
+          inRoom.value = true;
+          joinTime = Date.now();
+          startPing();
+          common_vendor.index.showToast({ title: "已进入自习室", icon: "success" });
+          return true;
+        }
+      } catch (e) {
+        common_vendor.index.showToast({ title: (e == null ? void 0 : e.message) || "加入失败", icon: "none" });
+      } finally {
+        loading.value = false;
+      }
+      return false;
+    }
     async function createRoom() {
       loading.value = true;
       try {
@@ -27,7 +120,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           common_vendor.index.showToast({ title: "已创建自习室", icon: "success" });
         }
       } catch (e) {
-        common_vendor.index.showToast({ title: e.message || "创建失败", icon: "none" });
+        common_vendor.index.showToast({ title: (e == null ? void 0 : e.message) || "创建失败", icon: "none" });
       } finally {
         loading.value = false;
       }
@@ -35,22 +128,22 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     async function joinRoom() {
       if (!roomCode.value)
         return common_vendor.index.showToast({ title: "请输入验证码", icon: "none" });
-      loading.value = true;
-      try {
-        const res = await utils_request.post("/study-room/join", { code: roomCode.value.toUpperCase() });
-        if (res.code === 200) {
-          currentRoom.value = res.data.code;
-          members.value = res.data.members || [];
-          inRoom.value = true;
-          joinTime = Date.now();
-          startPing();
-          common_vendor.index.showToast({ title: "已进入自习室", icon: "success" });
-        }
-      } catch (e) {
-        common_vendor.index.showToast({ title: e.message || "加入失败", icon: "none" });
-      } finally {
-        loading.value = false;
+      await joinRoomByCode(roomCode.value);
+    }
+    async function tryAutoJoin() {
+      if (inRoom.value)
+        return;
+      const code = pendingAutoJoinCode.value || common_vendor.index.getStorageSync("pending-study-room-code");
+      if (!code)
+        return;
+      if (!userStore.isLoggedIn) {
+        common_vendor.index.navigateTo({ url: "/pages/auth/index" });
+        return;
       }
+      common_vendor.index.removeStorageSync("pending-study-room-code");
+      pendingAutoJoinCode.value = "";
+      roomCode.value = String(code).toUpperCase();
+      await joinRoomByCode(roomCode.value);
     }
     async function fetchMembers() {
       if (!inRoom.value || !currentRoom.value)
@@ -122,6 +215,14 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         }
       });
     }
+    common_vendor.onMounted(() => {
+      userStore.loadUser();
+      tryAutoJoin();
+    });
+    common_vendor.onShow(() => {
+      userStore.loadUser();
+      tryAutoJoin();
+    });
     common_vendor.onUnmounted(() => {
       stopPing();
       if (inRoom.value) {
@@ -143,15 +244,36 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         h: common_vendor.t(currentRoom.value),
         i: common_vendor.o(copyCode, "72"),
         j: common_vendor.t(members.value.length),
-        k: common_vendor.f(members.value, (m, k0, i0) => {
+        k: common_vendor.o(openFriendPicker, "9f"),
+        l: common_vendor.f(members.value, (m, k0, i0) => {
           return {
             a: m.avatar_url || defaultAvatar,
             b: common_vendor.t(m.nickname),
             c: m.id
           };
         }),
-        l: common_vendor.o(leaveRoom, "21")
-      });
+        m: common_vendor.o(leaveRoom, "87")
+      }, {
+        n: showFriendPicker.value
+      }, showFriendPicker.value ? common_vendor.e({
+        o: common_vendor.o(closeFriendPicker, "94"),
+        p: friendsLoading.value
+      }, friendsLoading.value ? {} : !availableFriends.value.length ? {} : {
+        r: common_vendor.f(availableFriends.value, (friend, k0, i0) => {
+          return {
+            a: friend.avatar_url || defaultAvatar,
+            b: common_vendor.t(friend.nickname),
+            c: common_vendor.t(invitingId.value === friend.id ? "发送中..." : "邀请"),
+            d: friend.id,
+            e: common_vendor.o(($event) => inviteFriend(friend), friend.id)
+          };
+        })
+      }, {
+        q: !availableFriends.value.length,
+        s: common_vendor.o(() => {
+        }, "d4"),
+        t: common_vendor.o(closeFriendPicker, "c5")
+      }) : {});
     };
   }
 });
