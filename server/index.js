@@ -29,10 +29,12 @@ app.get('/', (req, res) => {
 });
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+const supabaseUsesServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey, {
+  supabaseUrl && supabaseKey
+    ? createClient(supabaseUrl, supabaseKey, {
         realtime: {
           transport: WebSocket
         }
@@ -48,6 +50,7 @@ app.get('/api/health', (req, res) => {
     message: 'ok',
     data: {
       supabaseEnabled: !!supabase,
+      supabaseUsesServiceRole,
       time: new Date().toISOString()
     }
   });
@@ -63,6 +66,7 @@ app.get('/api/version', (req, res) => {
       node: process.version,
       wechatConfigured: !!wechatAppId && !!wechatSecret,
       supabaseEnabled: !!supabase,
+      supabaseUsesServiceRole,
       time: new Date().toISOString()
     }
   });
@@ -452,20 +456,30 @@ app.post('/api/wechat/phone', async (req, res) => {
 });
 
 function getWeekStart() {
-  const now = new Date();
-  const dayOfWeek = now.getDay();
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short'
+  });
+  const parts = formatter.formatToParts(new Date());
+  const map = Object.fromEntries(parts.filter(p => p.type !== 'literal').map(p => [p.type, p.value]));
+  const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const year = parseInt(map.year, 10);
+  const month = parseInt(map.month, 10);
+  const day = parseInt(map.day, 10);
+  const dayOfWeek = weekdayMap[map.weekday] ?? 0;
   const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
+  const monday = new Date(Date.UTC(year, month - 1, day));
+  monday.setUTCDate(monday.getUTCDate() + diff);
   return monday.toISOString().split('T')[0];
 }
 
 function getWeekEnd() {
-  const weekStart = new Date(getWeekStart());
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-  return weekEnd.toISOString().split('T')[0];
+  const weekStart = new Date(`${getWeekStart()}T00:00:00.000Z`);
+  weekStart.setUTCDate(weekStart.getUTCDate() + 6);
+  return weekStart.toISOString().split('T')[0];
 }
 
 app.post('/api/users/register', async (req, res) => {
@@ -1384,9 +1398,14 @@ function mergeUserWithWeeklyStats(user, statsMap) {
   };
 }
 
+function isValidLeaderboardUser(user) {
+  const nickname = (user?.nickname || '').trim();
+  return nickname.length >= 2;
+}
+
 function buildLeaderboard(entries, limit) {
   return entries
-    .filter(e => e.nickname)
+    .filter(isValidLeaderboardUser)
     .sort((a, b) => (b.total_points - a.total_points) || (b.total_minutes - a.total_minutes))
     .slice(0, limit)
     .map((entry, index) => ({
@@ -1395,15 +1414,148 @@ function buildLeaderboard(entries, limit) {
     }));
 }
 
+function chunkArray(items, size) {
+  const chunks = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
+async function fetchAllUsers() {
+  const all = [];
+  let from = 0;
+  const pageSize = 500;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id,nickname,avatar_url')
+      .order('created_at', { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) throw new Error(error.message);
+
+    const batch = data || [];
+    all.push(...batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return all;
+}
+
 async function fetchWeeklyStatsMap(userIds, weekStart) {
-  if (!userIds.length) return new Map();
-  const { data, error } = await supabase
-    .from('weekly_stats')
-    .select('user_id,current_rank,total_minutes,total_points')
-    .eq('week_start', weekStart)
-    .in('user_id', userIds);
-  if (error) throw new Error(error.message);
-  return new Map((data || []).map(row => [row.user_id, row]));
+  const statsMap = new Map();
+  if (!userIds.length) return statsMap;
+
+  for (const chunk of chunkArray(userIds, 200)) {
+    const { data, error } = await supabase
+      .from('weekly_stats')
+      .select('user_id,current_rank,total_minutes,total_points')
+      .eq('week_start', weekStart)
+      .in('user_id', chunk);
+    if (error) throw new Error(error.message);
+    for (const row of data || []) {
+      statsMap.set(row.user_id, row);
+    }
+  }
+
+  return statsMap;
+}
+
+async function ensureWeeklyStatsForUsers(userIds, weekStart, weekEnd) {
+  if (!userIds.length) return;
+
+  const statsMap = await fetchWeeklyStatsMap(userIds, weekStart);
+  const missing = userIds.filter(id => !statsMap.has(id));
+  if (!missing.length) return;
+
+  for (const chunk of chunkArray(missing, 100)) {
+    const rows = chunk.map(user_id => ({
+      user_id,
+      week_start: weekStart,
+      week_end: weekEnd,
+      total_minutes: 0,
+      total_points: 0,
+      current_rank: 'intern',
+      highest_rank: 'intern',
+      sessions_completed: 0
+    }));
+
+    const { error } = await supabase
+      .from('weekly_stats')
+      .upsert(rows, { onConflict: 'user_id,week_start', ignoreDuplicates: true });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+}
+
+function mapRpcLeaderboardRows(rows, limit) {
+  return buildLeaderboard(
+    (rows || []).map(row => ({
+      id: row.id,
+      nickname: row.nickname || '',
+      avatar_url: row.avatar_url || null,
+      current_rank: row.current_rank || 'intern',
+      total_minutes: row.total_minutes || 0,
+      total_points: row.total_points || 0
+    })),
+    limit
+  );
+}
+
+async function fetchLeaderboardViaRpc(weekStart, limit) {
+  const { data, error } = await supabase.rpc('fetch_leaderboard', {
+    p_week_start: weekStart,
+    p_limit: limit
+  });
+  if (error) return null;
+  return mapRpcLeaderboardRows(data, limit);
+}
+
+async function fetchFriendsLeaderboardViaRpc(userId, weekStart, limit) {
+  const { data, error } = await supabase.rpc('fetch_friends_leaderboard', {
+    p_user_id: userId,
+    p_week_start: weekStart,
+    p_limit: limit
+  });
+  if (error) return null;
+  return mapRpcLeaderboardRows(data, limit);
+}
+
+async function buildGlobalLeaderboard(limit, weekStart, weekEnd) {
+  const rpcResult = await fetchLeaderboardViaRpc(weekStart, limit);
+  if (rpcResult) return rpcResult;
+
+  const userRows = await fetchAllUsers();
+  const userIds = userRows.map(u => u.id);
+  await ensureWeeklyStatsForUsers(userIds, weekStart, weekEnd);
+  const statsMap = await fetchWeeklyStatsMap(userIds, weekStart);
+  return buildLeaderboard(userRows.map(user => mergeUserWithWeeklyStats(user, statsMap)), limit);
+}
+
+async function buildFriendsLeaderboard(userId, limit, weekStart, weekEnd) {
+  const rpcResult = await fetchFriendsLeaderboardViaRpc(userId, weekStart, limit);
+  if (rpcResult) return rpcResult;
+
+  const { data: rels, error: relError } = await supabase.from('friends').select('friend_id').eq('user_id', userId);
+  if (relError) throw new Error(relError.message);
+
+  const ids = Array.from(new Set([userId, ...(rels || []).map(r => r.friend_id).filter(Boolean)]));
+  if (!ids.length) return [];
+
+  const { data: userRows, error: usersError } = await supabase
+    .from('users')
+    .select('id,nickname,avatar_url')
+    .in('id', ids);
+  if (usersError) throw new Error(usersError.message);
+
+  await ensureWeeklyStatsForUsers(ids, weekStart, weekEnd);
+  const statsMap = await fetchWeeklyStatsMap(ids, weekStart);
+  return buildLeaderboard((userRows || []).map(user => mergeUserWithWeeklyStats(user, statsMap)), limit);
 }
 
 app.get('/api/leaderboard/friends', async (req, res) => {
@@ -1416,30 +1568,8 @@ app.get('/api/leaderboard/friends', async (req, res) => {
 
   if (supabase) {
     try {
-      const { data: rels, error: relError } = await supabase.from('friends').select('friend_id').eq('user_id', token);
-      if (relError) {
-        return res.status(500).json({ code: 500, message: relError.message });
-      }
-
-      const ids = Array.from(new Set([token, ...(rels || []).map(r => r.friend_id).filter(Boolean)]));
-      if (!ids.length) {
-        return res.json({ code: 200, message: 'success', data: [] });
-      }
-
-      const { data: userRows, error: usersError } = await supabase
-        .from('users')
-        .select('id,nickname,avatar_url')
-        .in('id', ids);
-      if (usersError) {
-        return res.status(500).json({ code: 500, message: usersError.message });
-      }
-
-      const statsMap = await fetchWeeklyStatsMap(ids, weekStart);
-      const leaderboard = buildLeaderboard(
-        (userRows || []).map(user => mergeUserWithWeeklyStats(user, statsMap)),
-        limit
-      );
-
+      const weekEnd = getWeekEnd();
+      const leaderboard = await buildFriendsLeaderboard(token, limit, weekStart, weekEnd);
       return res.json({ code: 200, message: 'success', data: leaderboard });
     } catch (e) {
       return res.status(500).json({ code: 500, message: e?.message || '服务异常' });
@@ -1465,21 +1595,8 @@ app.get('/api/leaderboard', async (req, res) => {
 
   if (supabase) {
     try {
-      const { data: userRows, error: usersError } = await supabase
-        .from('users')
-        .select('id,nickname,avatar_url')
-        .not('nickname', 'is', null);
-      if (usersError) {
-        return res.status(500).json({ code: 500, message: usersError.message });
-      }
-
-      const userIds = (userRows || []).map(u => u.id);
-      const statsMap = await fetchWeeklyStatsMap(userIds, weekStart);
-      const leaderboard = buildLeaderboard(
-        (userRows || []).map(user => mergeUserWithWeeklyStats(user, statsMap)),
-        limit
-      );
-
+      const weekEnd = getWeekEnd();
+      const leaderboard = await buildGlobalLeaderboard(limit, weekStart, weekEnd);
       return res.json({ code: 200, message: 'success', data: leaderboard });
     } catch (e) {
       return res.status(500).json({ code: 500, message: e?.message || '服务异常' });

@@ -163,19 +163,19 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: common_vendor.o(goBack, "6a"),
+        a: common_vendor.o(goBack, "5b"),
         b: common_vendor.unref(isWeixinMp)
       }, common_vendor.unref(isWeixinMp) ? {
-        c: common_vendor.o(enableFriendNotifications, "86")
+        c: common_vendor.o(enableFriendNotifications, "9b")
       } : {}, {
-        d: common_vendor.o(copyInviteCode, "93"),
+        d: common_vendor.o(copyInviteCode, "6c"),
         e: !myInviteCode.value,
         f: common_vendor.t(myInviteCode.value || "加载中..."),
         g: inviteInput.value,
-        h: common_vendor.o(($event) => inviteInput.value = $event.detail.value, "b5"),
+        h: common_vendor.o(($event) => inviteInput.value = $event.detail.value, "48"),
         i: common_vendor.t(inviteLoading.value ? "发送中..." : "发送"),
         j: inviteLoading.value,
-        k: common_vendor.o(sendInvite, "1d"),
+        k: common_vendor.o(sendInvite, "22"),
         l: common_vendor.t(invites.value.incoming.length),
         m: invites.value.incoming.length
       }, invites.value.incoming.length ? {
